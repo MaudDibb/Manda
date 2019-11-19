@@ -1,0 +1,723 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<title>Manda</title>
+	<style>
+		body {background:#222;margin:0px;padding:0px;}
+		#main {background:#000;position:absolute;top:0px;right:0px;left:0px;bottom:0px;margin:0px;padding:0px;cursor:crosshair;}
+		#c {padding-left:15px;width:200px;height:240px;background:#222}
+		#toolsettings {position:absolute;width:240px;top:0px;left:0px;background:#222;font:12px monospace;color:#aaa;}
+		#toolsettings input[type=text] {font:12px monospace;border:1px solid #aaa;background:#000;color:#aaa;padding-left:4px;}
+		#toolsettings > div {padding:5px 5px 0px 10px;}
+		#toolsettings > div:last-child {margin-bottom:10px;}
+		#toolsettings > div > div:first-child {float:left;padding-top:1px;}
+		#toolsettings > div > div:nth-child(2) {float:right}
+		#toolsettings > div > div:nth-child(2) > span {border:1px solid #888;background:#000;border-radius:5px;padding:0px 5px 0px 5px;font-size:12px}
+		input[type=number]::-webkit-inner-spin-button,
+		input[type=number]::-webkit-outer-spin-button { -webkit-appearance:none;margin:0; }
+		#thumb1,#thumb2,#thumb3 {position:absolute;top:0px;left:0px;width:200px;height:200px;border:1px solid #222;background:#000}
+		#thumb2 {left:220px;}
+		#thumb3 {left:440px;}
+		#gallery {position:absolute;margin:auto;width:700px;height:242px;top:0px;left:0px;right:0px;bottom:0px;border:1px solid #777;background:#111}
+		#prev,#next {cursor:pointer;padding-top:12px;position:absolute;top:80px;height:30px;width:17px;color:#aaa;background:#000;border:1px solid #777;border-radius:5px}
+		#prev {left:-21px;}
+		#next {right:-21px;}
+		#prev:hover,#next:hover {background:#888;color:#000;}
+	</style>
+	<script>
+/* color picker */
+(function() {
+
+const center = {x:100,y:100};
+let pickerData = [];
+let pickerMode = '';
+let color = {h:0,s:100,l:50,x:99,y:0};
+let canvas = null;
+
+const deg2radian = deg => (Math.PI/180)*deg;
+const sqr = x => x * x;
+const pointOnCircle = (deg,rad,center={x:0,y:0}) => [center.x + Math.sin(deg2radian(deg))*rad, center.y - Math.cos(deg2radian(deg))*rad];
+const distanceFromCenter = point => Math.sqrt(sqr(point.x-center.x)+sqr(point.y-center.y));
+const pointInRect = (pt, rect) => pt.x >= rect.x && pt.x < rect.x+rect.width && pt.y >= rect.y && pt.y < rect.y+rect.height;
+
+const init = (el) => {
+	let x=y=lum=lum2=lumT=lumInc=sat=0;
+	pickerData = Array.from({length:100},()=>Array.from({length:100},()=>0));
+	for (y=0,lum=100,lum2=50;y<100;y+=2,lum-=2,lum2-=1) {
+		for (sat=0,x=0,lumT=lum,lumInc=(lum-lum2)/50.0; sat<100; sat+=2,x+=2) {
+			pickerData[x][y] = {s:sat,l:lumT};
+			pickerData[x+1][y] = {s:sat,l:lumT};
+			pickerData[x][y+1] = {s:sat,l:lumT};
+			pickerData[x+1][y+1] = {s:sat,l:lumT};
+			lumT -= lumInc;
+		}
+	}
+
+	canvas = el;
+	canvas.addEventListener('mousedown', pickerDown);
+	canvas.addEventListener('mousemove', pickerMove);
+	canvas.addEventListener('mouseup', pickerUp);
+	renderColorPicker(color);
+}
+
+const offset = (o,top=0,left=0) => { do { left+=o.offsetLeft;top+=o.offsetTop} while (o=o.offsetParent); return {x:left,y:top}};
+
+const pickerDown = e => {
+	if (e.which == 1) {
+		let [x,y] = [e.offsetX-15,e.offsetY];
+		let dist = distanceFromCenter({x,y});
+		let [rx,ry] = [x - center.x, y - center.y];
+		if (dist > 73) { // changing hue
+			// map the circle so the top is at 0 degrees, going clockwise to 360
+			pickerMode = 'hue';
+			color.h = Math.atan2(rx,-ry) * (180/Math.PI);
+			if (color.h<0) color.h += 360;
+			renderColorPicker(color);
+		}
+		if (pointInRect({x,y},{x:center.x-50,y:center.y-50,width:100,height:100})) {
+			pickerMode = 'sat-lum';
+			let [px,py] = [x-(center.x-50),y-(center.y-50)];
+			color.s = pickerData[px][py].s;
+			color.l = pickerData[px][py].l;
+			color.x = px;
+			color.y = py;
+			renderColorPicker(color);
+		}
+	}
+}
+
+const pickerMove = e => {
+	let elOffset = offset(canvas);
+	if (e.which == 1) {
+		let [x,y] = [e.offsetX-15,e.offsetY];
+		switch(pickerMode) {
+			case 'hue':
+				let [rx,ry] = [x - center.x, y - center.y];
+				color.h = Math.atan2(rx,-ry) * (180/Math.PI);
+				if (color.h<0) color.h += 360;
+				break;
+
+			case 'sat-lum':
+				let [px,py] = [x-(center.x-50),y-(center.y-50)];
+				if (px < 0) px = 0;
+				if (px >= 100) px = 99;
+				if (py < 0) py = 0;
+				if (py >= 100) py = 99;
+				color.s = pickerData[px][py].s;
+				color.l = pickerData[px][py].l;
+				color.x = px;
+				color.y = py;
+				break;
+		}
+		window.requestAnimationFrame(()=>renderColorPicker(color));
+	}
+}
+
+const pickerUp = e => pickerMode = '';
+const getHSL = () => `hsl(${color.h},${color.s}%,${color.l}%)`;
+
+const renderColorPicker = (color) => {
+	canvas.width = 200;
+	canvas.height = 240;
+	let ctx = canvas.getContext('2d');
+	let hue=sat=lum=lum2=lumInc=lumT=x=y=0;
+		
+	for (hue=0; hue<360; hue+=1) {
+		let [x1,y1] = pointOnCircle(hue,72,center);
+		let [x2,y2] = pointOnCircle(hue+1,72,center);
+		let [x3,y3] = pointOnCircle(hue+1,90,center);
+		let [x4,y4] = pointOnCircle(hue,90,center);
+		ctx.beginPath();
+		ctx.fillStyle = `hsl(${hue},100%,50%`;
+		ctx.strokeStyle = `hsl(${hue},100%,50%`;
+		ctx.moveTo(x1,y1);
+		ctx.lineTo(x2,y2);
+		ctx.lineTo(x3,y3);
+		ctx.lineTo(x4,y4);
+		ctx.closePath();
+		ctx.fill();
+		ctx.stroke();
+	}
+	
+	for (y=0; y<100; y+=2) {
+		for (x=0; x<100; x+=2) {
+			ctx.fillStyle = `hsl(${color.h},${pickerData[x][y].s}%,${pickerData[x][y].l}%)`;
+			ctx.fillRect(center.x+(x-50),center.y+(y-50),2,2);
+		}
+	}
+
+	ctx.strokeStyle = '#fff';
+	ctx.fillStyle = '#000';
+	ctx.lineWidth = 2;
+
+	let [x1,y1] = pointOnCircle(color.h,81,center);
+	ctx.fillStyle = '#000';
+	ctx.lineWidth = 2;
+	ctx.strokeStyle = '#fff';
+	ctx.beginPath();
+	ctx.arc(x1,y1,5,0,2*Math.PI);
+	ctx.fill();
+	ctx.stroke();
+
+	ctx.beginPath();
+	ctx.arc(center.x+color.x-50,center.y+color.y-50,4,0,2*Math.PI);
+	ctx.fill();
+	ctx.stroke();
+
+	ctx.lineWidth = 1;
+	ctx.beginPath();
+	ctx.rect(10.5,200.5,180.5,30.5);
+	ctx.fill();
+	ctx.stroke();
+
+	ctx.fillStyle = getHSL();
+	ctx.fillRect(15,205,171,21);
+}
+
+const update = () => {
+	color.s = pickerData[color.x][color.y].s;
+	color.l = pickerData[color.x][color.y].l;
+	renderColorPicker(color);
+}
+const moveLeft  = (v) => (color.x-=v,(color.x<0)&&(color.x=0),update());
+const moveRight = (v) => (color.x+=v,(color.x>99)&&(color.x=99),update());
+const moveUp    = (v) => (color.y-=v,(color.y<0)&&(color.y=0),update())
+const moveDown  = (v) => (color.y+=v,(color.y>99)&&(color.y=99),update());
+const moveCW    = (v) => (color.h+=v,(color.h>359)&&(color.h-=360),update());
+const moveCCW   = (v) => (color.h-=v,(color.h<0)&&(color.h+=360),update());
+
+const setColor = c => {
+	let reg = /^hsl\(([^,]+),([^%]+)%,([^%]+)%\)$/;
+	let [,h,s,l] = (reg.exec(c)||[]).map(v=>+v);
+	color.h = h;
+	color.s = s;
+	color.l = l;
+	color.x = s|0;
+	for (y=0;y<100;y++) {
+		if (Math.abs(pickerData[color.x][y].l - l) < 0.0001) break;
+	}
+	color.y = y;
+	renderColorPicker(color);
+}
+
+window.colorPicker = {
+	init,
+	getHSL,
+	moveLeft,
+	moveRight,
+	moveUp,
+	moveDown,
+	moveCW,
+	moveCCW,
+	setColor,
+}
+
+})();
+/* end color picker */
+
+/* start of manda */
+let canvas = ctx = mandacanvas = mandactx = galleryCanvas = null;
+let shiftDown = ctrlDown = false;
+let manda = {
+	w:0,h:0,mx:0,my:0,tx:0,ty:0,ax:0,ay:0,oldtx:0,oldty:0,
+	center:{x:0,y:0},
+	scale:1,invScale:1,toolRad:20,radialCount:8,radialOffset:0,
+	panning:false,radialSym:true,mirrorRadial:false,snapRadial:false,
+	cursor:[],shapes:[]
+};
+
+Object.assign(CanvasRenderingContext2D.prototype,{
+	circle:function(x,y,rad) {this.arc(x,y,rad,0,2*Math.PI)},
+	clear:function(){this.clearRect(0,0,this.canvas.width,this.canvas.height)},
+	zero:function(){this.fillStyle='#000';this.fillRect(0,0,this.canvas.width,this.canvas.height)}
+});
+
+const deg2radian = deg => (Math.PI/180)*deg;
+const pointOnCircle = (deg,rad,center={x:0,y:0}) => [center.x+Math.sin(deg2radian(deg))*rad, center.y-Math.cos(deg2radian(deg))*rad];
+const angleFromPoint = (x,y,p={x:0,y:0},r) => (r=Math.atan2(x-p.x,-(y-p.y))*(180/Math.PI),(r<0)&&(r+=360),r);
+const distFromPoint = (x,y,p={x:0,y:0}) => Math.sqrt((p.x-x)*(p.x-x)+(p.y-y)*(p.y-y));
+const select = (cases,defaultCase) => (key, ...r) => key in cases ? cases[key](...r) : defaultCase(...r);
+const $ = s => document.querySelector(s);
+const setCursorSize = (cs) => manda.cursor.forEach(s=>s.size=cs);
+const closeGallery = () => $('#gallery').style.display = 'none';
+const renderManda = () => window.requestAnimationFrame(()=>render(manda));
+const transformMouseCoords = (e) => [(e.offsetX-manda.tx)*manda.invScale,(e.offsetY-manda.ty)*manda.invScale];
+
+const calcMandaSize = (shapes) => {
+	let [minX,minY,maxX,maxY] = [1000000,1000000,-1000000,-1000000];
+	shapes.forEach(s=>s.a.forEach(c=>{
+		minX = Math.min(minX,c.x-s.s);
+		minY = Math.min(minY,c.y-s.s);
+		maxX = Math.max(maxX,c.x+s.s);
+		maxY = Math.max(maxY,c.y+s.s);
+	}));
+	minX -= 20;
+	minY -= 20;
+	maxX += 20;
+	maxY += 20;
+	return [maxX-minX,maxY-minY];
+}
+
+const setCenter = () => {
+	let [mx,my,dot] = [manda.mx,manda.my,null];
+	manda.shapes.forEach(s=>s.a.forEach(c=>(distFromPoint(mx,my,c)<s.s)&&(dot=c)));
+	if (dot) manda.center = {...dot};
+	renderManda();
+}
+
+const resize = (e) => {
+	let w = window.innerWidth-1;
+	let h = window.innerHeight-1;
+	canvas.width = w;
+	canvas.height = h;
+	canvas.style.width = w + 'px';
+	canvas.style.height = h + 'px';
+	ctx.width = w;
+	ctx.height = h;
+	manda = {...manda,tx:canvas.width/2,ty:canvas.height/2,w,h};
+	renderManda();
+}
+
+const keyDownFn = select({
+	'Escape':       () => closeGallery(),
+	'ShiftLeft': 	() => shiftDown = true,
+	'ShiftRight': 	() => shiftDown = true,
+	'ControlLeft':  () => ctrlDown = true,
+	'ControlRight': () => ctrlDown = true, 
+	'ArrowUp': 		() => colorPicker.moveUp(shiftDown?5:1),
+	'ArrowDown': 	() => colorPicker.moveDown(shiftDown?5:1),
+	'ArrowLeft': 	() => colorPicker.moveLeft(shiftDown?5:1),
+	'ArrowRight': 	() => colorPicker.moveRight(shiftDown?5:1),
+	'BracketLeft': 	() => colorPicker.moveCCW(shiftDown?5:1),
+	'BracketRight': () => colorPicker.moveCW(shiftDown?5:1),
+	'Digit1': 		() => radialOffset1Over4(),
+	'Digit2': 		() => radialOffset1Over2(),
+	'Digit3': 		() => radialOffset3Over4(),
+	'Digit0': 		() => radialOffset0(), 
+	'Enter': 		() => setCenter(),
+},()=>false);
+
+const keyUpFn = select({
+	'ShiftLeft': 	() => shiftDown = false,
+	'ShiftRight': 	() => shiftDown = false,
+	'ControlLeft':  () => ctrlDown = false,
+	'ControlRight': () => ctrlDown = false, 
+},()=>false);
+
+const keydown = (e) => {
+	//console.log(e.code);
+	keyDownFn(e.code);
+	renderManda();
+}
+
+const keyup = (e) => keyUpFn(e.code);
+
+const mousewheel = e => {
+	if (shiftDown) {
+		manda.toolRad += -e.deltaY*0.01;
+		if (manda.toolRad < 0) manda.toolRad = 0.05;
+		setCursorSize(manda.toolRad);
+	} else {
+		let [x,y,delta] = [e.offsetX,e.offsetY,e.deltaY < 0 ? 9/10 : 10/9];
+		manda.scale *= delta;
+		manda.invScale = 1.0/manda.scale;
+		manda.tx = x + delta * (manda.tx-x);
+		manda.ty = y + delta * (manda.ty-y);
+	}
+	renderManda();
+}
+
+const mousedown = e => {
+	manda.panning = ctrlDown;
+	if (shiftDown) {
+		let [mx,my,shape] = [...transformMouseCoords(e),null];
+		manda.shapes.forEach(s=>s.a.forEach(c=>(distFromPoint(mx,my,c)<s.s)&&(shape=s)));
+		if (shape) colorPicker.setColor(shape.c);
+		renderManda();
+		return;
+	}
+	if (manda.panning) {
+		manda = {...manda,ax:e.offsetX,ay:e.offsetY,oldtx:manda.tx,oldty:manda.ty};
+	} else {
+		(manda.cursor.length > 0) && manda.shapes.push({s:manda.toolRad,c:colorPicker.getHSL(),a:manda.cursor.map(s=>({x:s.x,y:s.y}))});
+		let [oldctx,w,h] = [ctx,...calcMandaSize(manda.shapes)];
+		mandacanvas.width = w;
+		mandacanvas.height = h;
+		ctx = mandactx;
+		render({...manda,scale:1,w,h,tx:w/2,ty:h/2},false);
+		ctx = oldctx;
+	}
+}
+
+const mouseup = e => {
+	manda.panning = false;
+}
+
+const mousemove = e => {
+	let [mx,my] = transformMouseCoords(e);
+	manda.mx = mx;
+	manda.my = my;
+
+	if (manda.panning) {
+		let [nx,ny] = [e.offsetX,e.offsetY];
+		manda.tx = manda.oldtx + (nx - manda.ax);
+		manda.ty = manda.oldty + (ny - manda.ay);
+	} else {
+		manda.cursor = [];
+		if (distFromPoint(mx,my,manda.center) < 5) {
+			mx = manda.center.x;
+			my = manda.center.y;
+		}
+
+		if (manda.snapRadial) {
+			let a = angleFromPoint(mx,my,manda.center);
+			let dist = distFromPoint(mx,my,manda.center);
+			for  (r=0; r<360; r+=(360/manda.radialCount)) {
+				if (Math.abs(manda.radialOffset+r-a)<3) {
+					[mx,my] = pointOnCircle(manda.radialOffset+r,dist,manda.center);
+				}
+			}
+		}
+
+		if (manda.radialSym) {
+			let a = angleFromPoint(mx,my,manda.center);
+			let dist = distFromPoint(mx,my,manda.center);
+			for (r=0; r<360; r+=(360/manda.radialCount)) {
+				let [dx,dy] = pointOnCircle(r+a,dist,manda.center);
+				manda.cursor.push({x:dx,y:dy,size:manda.toolRad});
+				if (manda.mirrorRadial) {
+					[dx,dy] = pointOnCircle(r-a,dist,manda.center);
+					manda.cursor.push({x:dx,y:dy,size:manda.toolRad});
+				}
+			}
+		} else {
+			manda.cursor.push({x:mx,y:my,size:manda.toolRad});
+		}
+	}
+	renderManda();
+}
+
+const render = (m,ui=true,doclear=true) => {
+	let x=y=r=0;
+	ctx.save();
+
+	doclear && (ui ? ctx.clear() : ctx.zero());
+
+	ctx.translate(m.tx,m.ty);
+	ctx.scale(m.scale,m.scale);
+	
+	if (ui) {
+		let [mw,mh] = [mandacanvas.width/2,mandacanvas.height/2];
+		ctx.drawImage(mandacanvas,-mw,-mh);
+		
+		ctx.fillStyle = 'none';
+		ctx.strokeStyle = '#111';
+		ctx.lineWidth = 2;
+		ctx.beginPath();
+		ctx.circle(m.center.x,m.center.y,20);
+		ctx.stroke();
+
+		ctx.beginPath();
+		for (r=0; r<360; r+=(360/m.radialCount)) {
+			ctx.moveTo(m.center.x+0.5,m.center.y+0.5);
+			[x,y] = pointOnCircle(r+m.radialOffset,m.w/2,m.center);
+			ctx.lineTo(x+0.5,y+0.5);
+		}
+		ctx.stroke();
+	}
+
+	!ui && m.shapes.forEach(s=>{
+		ctx.fillStyle = s.c;
+		s.a.forEach(d=>{
+			ctx.beginPath();
+			ctx.circle(d.x,d.y,s.s,true)
+			ctx.fill()
+		});
+	});
+	
+	if (ui) {
+		ctx.fillStyle = colorPicker.getHSL();
+		m.cursor.forEach(s=>{
+			ctx.beginPath();
+			ctx.circle(s.x,s.y,s.size);
+			ctx.fill();
+		});
+	}
+
+	ctx.restore();
+}
+
+const toggleSymmetry = e => (manda.radialSym=e.checked,renderManda());
+const radialCount = e => (manda.radialCount=e.value|0,renderManda());
+const radialOffset = e => (manda.radialOffset=e.value|0,renderManda());
+const toggleMirror = e => (manda.mirrorRadial=e.checked,renderManda());
+const toggleSnapRadial = e => (manda.snapRadial=e.checked,renderManda());
+const radialOffset1Over2 = (r) => (r=(360/manda.radialCount)/2,$('#radialOffset').value=r,manda.radialOffset=r,renderManda());
+const radialOffset1Over4 = (r) => (r=(360/manda.radialCount)/4,$('#radialOffset').value=r,manda.radialOffset=r,renderManda());
+const radialOffset3Over4 = (r) => (r=((360/manda.radialCount)/4)*3,$('#radialOffset').value=r,manda.radialOffset=r,renderManda());
+const radialOffset0 = () => ($('#radialOffset').value=0,manda.radialOffset=0,renderManda());
+
+const downloadImage = () => {
+	let filename = prompt('Enter a filename for this image');
+	if (filename) {
+		let oldctx = ctx;
+		let [width,height] = calcMandaSize(manda.shapes);
+		let canvas = document.createElement('canvas');
+		canvas.width = width;
+		canvas.height = height;
+		ctx = canvas.getContext('2d');
+		render({...manda,scale:1,w:width,h:height,tx:width/2,ty:width/2},false);
+		canvas.toBlob(blob=>{
+			let a = document.createElement('a');
+			a.href = URL.createObjectURL(blob);
+			a.download = filename + '.png';
+			document.body.appendChild(a);
+			a.click();
+			document.body.removeChild(a);
+			ctx = oldctx;
+		});		 
+	}
+}
+
+const save = () => {
+	let name = prompt('Save name for this project?');
+	if (name) {
+		let shapes = manda.shapes.map(s=>{
+			let reg = /^hsl\(([^,]+),([^%]+)%,([^%]+)%\)$/;
+			let [,hue,sat,lum] = (reg.exec(s.c)||[]).map(v=>+(+v).toFixed(2));
+			return [
+				`${+s.s.toFixed(2)}`,
+				`${hue},${sat},${lum}`,
+				`${s.a.reduce((r,d)=>(r.push(`${+d.x.toFixed(2)},${+d.y.toFixed(2)}`),r),[]).join('|')}`
+			].join('|');
+		});
+		window.localStorage.setItem(`manda_${name}`,JSON.stringify(shapes));
+	}
+}
+
+const load = (name) =>
+	JSON.parse(window.localStorage.getItem(name))
+	.map(s=>{
+		let parts = s.split('|');
+		let [hue,sat,lum] = parts[1].split(',');
+		return {s:+parts[0],c:`hsl(${hue},${sat}%,${lum}%)`,a:(parts.slice(2)).map(d=>{let [x,y]=d.split(',');return {x:+x,y:+y}})};
+	});
+
+const loadFn = (name) => () => {
+	$('#gallery').style.display='none';
+	manda = {...manda, shapes:load(name),tx:manda.w/2,ty:manda.h/2,center:{x:0,y:0},scale:1,invScale:1,cursor:[]};
+	shiftDown = false;
+	ctrlDown = false;
+	mousedown();
+	renderManda();
+}
+
+const showThumbs = () => {
+	['#thumb1','#thumb2','#thumb3'].forEach((id,n)=>{
+		let [cstart,c,ctx] = [n+manda.galleryStart,$(id),$(id).getContext('2d')];
+		ctx.fillStyle = '#000';
+		if (cstart < manda.saves.length) {
+			ctx.drawImage(galleryCanvas,cstart*200,0,200,200,0,0,200,200);
+			c.onclick = loadFn(manda.saves[cstart]);
+		} else {
+			ctx.fillRect(0,0,200,200);
+		}
+	});
+}
+
+const galleryPrev = () => ((manda.galleryStart>0) && (manda.galleryStart-=3),showThumbs());  
+const galleryNext = () => ((manda.galleryStart+3 < manda.saves.length) && (manda.galleryStart+=3),showThumbs());  
+const gallery = () => {
+	let n=0;
+	let len = window.localStorage.length;
+	manda.saves = [];	
+
+	while (n<len) {
+		let name = window.localStorage.key(n);
+		if (name.startsWith('manda_')) {
+			//console.log(window.localStorage.getItem(name).length);
+			manda.saves.push(name);
+		}
+		n++;
+	}
+
+	n = manda.saves.length;
+	galleryCanvas.width = n*200;
+	galleryCanvas.height = 200;
+	galleryCanvas.style.width = `${n*200}px`;
+	galleryCanvas.style.height = '200px';
+	let oldctx = ctx;
+	ctx = galleryCanvas.getContext('2d');
+	ctx.zero();
+
+	manda.saves.forEach((name,n)=>{
+		let shapes = load(name);
+		let [w,h] = calcMandaSize(shapes);
+		let scale = (w>h) ? (200/w) : (200/h);
+		render({shapes,tx:(n*200)+100,ty:100,scale},false,false);
+	});
+
+	ctx = oldctx;
+	//ctx.drawImage(galleryCanvas,300,300);
+	manda.galleryStart = 0;
+	showThumbs();
+	$('#gallery').style.display='';
+}
+
+const newManda = () => {
+	manda = {...manda,shapes:[],cursor:[],tx:manda.w/2,ty:manda.h/2,center:{x:0,y:0},scale:1,invScale:1,cursor:[]};
+	shiftDown = false;
+	ctrlDown = false;
+	mousedown();
+	renderManda();
+}
+
+window.addEventListener('DOMContentLoaded', (e) => {
+	colorPicker.init($('#c'));
+	canvas = $('#main');
+	ctx = canvas.getContext('2d');
+	resize();
+	window.addEventListener('resize', resize);
+	canvas.addEventListener('mousedown', mousedown);
+	canvas.addEventListener('mousemove', mousemove);
+	canvas.addEventListener('mouseup', mouseup);
+	canvas.addEventListener('wheel', mousewheel);
+	document.onkeydown = keydown;
+	document.onkeyup = keyup;
+	mandacanvas = document.createElement('canvas');
+	mandactx = mandacanvas.getContext('2d');
+	galleryCanvas = document.createElement('canvas');
+	$('#prev').addEventListener('mousedown',galleryPrev);
+	$('#next').addEventListener('mousedown',galleryNext);
+});
+
+	</script>
+</head>
+<body>
+<canvas id='main'></canvas>
+<div id='toolsettings'>
+	<div id='colorpicker'>
+		<canvas id='c'></canvas>
+	</div>
+	<div>
+		<div>Radial Symmetry</div>
+		<div><input type='checkbox' id='radialSym' checked onclick='toggleSymmetry(this)'></div>
+		<div style='clear:both'></div>
+	</div>
+	<div>
+		<div>Number of Radials</div>
+		<div><input type='number' id='radialCount' min=2 style='width:30px' value='8' onmouseout='radialCount(this)' title='Use your mousewheel to adjust value. When mouse leaves the display will reflect the new changes'></div>
+		<div style='clear:both'></div>
+	</div>
+	<div>
+		<div>Radial Offset</div>
+		<div>
+			<span onclick='radialOffset0()' title='set radial offset to 0'>0</span>
+			<span onclick='radialOffset1Over4()' title='set radial offset to 1/4 angle between radials'>1</span>
+			<span onclick='radialOffset1Over2()' title='set radial offset to 1/2 angle between radials'>2</span>
+			<span onclick='radialOffset3Over4()' title='set radial offset to 3/4 angle between radials'>3</span>
+
+			<input type='number' id='radialOffset' style='width:30px' min=0 value='0' step='0.25' onmouseout='radialOffset(this)' title='Use your mousewheel to adjust value. When mouse leaves the display will reflect the new changes'>
+		</div>
+		<div style='clear:both'></div>
+	</div>
+	<div>
+		<div>Radial Mirroring</div>
+		<div><input type='checkbox' id='mirrorRadial' onclick='toggleMirror(this)'></div>
+		<div style='clear:both'></div>
+	</div>
+	<div>
+		<div>Snap to Radial</div>
+		<div><input type='checkbox' id='snapRadial' onclick='toggleSnapRadial(this)'></div>
+		<div style='clear:both'></div>
+	</div>
+	<div>
+		<div>Saturation</div>
+		<div>
+			<span>&larr;</span> / <span>&rarr;</span>
+		</div>
+		<div style='clear:both'></div>
+	</div>
+	<div>
+		<div>Luminance</div>
+		<div>
+			<span>&uarr;</span> / <span>&darr;</span>
+		</div>
+		<div style='clear:both'></div>
+	</div>
+	<div>
+		<div>Hue</div>
+		<div>
+			<span>[</span> / <span>]</span>
+		</div>
+		<div style='clear:both'></div>
+	</div>
+	<div>
+		<div></div>
+		<div style='float:none;text-align:center'>
+			<span>Shift</span> + above keys for<br>
+			larger increments
+		</div>
+	</div>
+	<div>
+		<div>Dot Size</div>
+		<div>
+			<span>Shift</span> + mouse wheel
+		</div>
+		<div style='clear:both'></div>
+	</div>
+	<div>
+		<div>Zoom</div>
+		<div>
+			mouse wheel
+		</div>
+		<div style='clear:both'></div>
+	</div>
+	<div>
+		<div>Pan</div>
+		<div>
+			<span>Ctrl</span> + LMB
+		</div>
+		<div style='clear:both'></div>
+	</div>
+	<div>
+		<div>Color under cursor</div>
+		<div>
+			<span>Shift</span> + LMB
+		</div>
+		<div style='clear:both'></div>
+	</div>
+	<div>
+		<div>Center radials on<br>dot under cursor</div>
+		<div>
+			<span>Enter</span>
+		</div>
+		<div style='clear:both'></div>
+	</div>
+	<div>
+		<div style='float:none;text-align:center'>
+			<input type='button' value='New' 	 onclick='newManda()'>
+			<input type='button' value='Gallery' onclick='gallery()'>
+			<input type='button' value='PNG' 	 onclick='downloadImage()'>
+			<input type='button' value='Save' 	 onclick='save()'>
+		</div>
+		<div style='clear:both'></div>
+	</div>
+</div>
+<div id='gallery' style='display:none'>
+	<div style='position:relative;margin:20px 25px 20px 25px'>
+		<div id='prev'>&nbsp;&lt;</div>
+		<div>
+			<canvas id='thumb1' width=200 height=200></canvas>
+		</div>
+		<div>
+			<canvas id='thumb2' width=200 height=200></canvas>
+		</div>
+		<div>
+			<canvas id='thumb3' width=200 height=200></canvas>
+		</div>
+		<div id='next'>&nbsp;&gt;</div>
+	</div>
+</div>
+</body>
+</html>
