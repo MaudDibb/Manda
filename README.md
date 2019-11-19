@@ -43,6 +43,9 @@ Im using a clever trick where the current set is rendered into an offscreen canv
 # cant edit/undo existing shapes?
 No...working on that part ;)
 
+# cant delete mandala sessions stored on my machine?
+Getting to that...for now you can use devtools in chrome, go to application, local storage. You will see the various mandala sessions stored there, you can also delete them manually.
+
 # things are missing/doesnt work
 This is still a work in progress. bear with me. Consider it an alpha version. I released it so you all can play with it, and maybe you can help me with other browsers (i dont have safari for example)
 
@@ -63,3 +66,15 @@ I know it could have been done differently. I did not design this for a code rev
 
 # nuff sed
 make some awesome art!
+
+# TODO
+- make this work in Edge
+- make this work in Opera (it is webkit..should work fine as is)
+- need help with safari..i dont own anything apple based.
+- delete saved mandalas
+- indexDB for more storage space. Was looking at cache api too, maybe store the sessions as json files? can that be done? can i iterate over cached files?
+- touchscreen events would be nice, that might end up being a seperate project
+- editing of current session objects...right now its add only, no delete/undo/edit
+- for editing to work, the way the mandala data is stored will need to change drastically. It will force a conversion of existing data..it could also help reduce size of saves if i do it right...we shall see.
+- svg support? not hard to do.
+- any other ideas? let me know.
