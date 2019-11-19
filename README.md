@@ -1,6 +1,8 @@
 # Manda
 SPA designed for one thing only: dot mandalas
 
+![Manda image](https://i.imgur.com/7zn0OWT.png)
+
 # So what is a dot mandala?
 google the phrase 'dot mandala' and look at the image/video results. Its a beautiful art form, and it can be done pretty easily with a little bit of paint and some simple tools. There are many tutorials, with different styles and tools used. 
 
@@ -11,7 +13,7 @@ I'm also pretty handy with javascript and graphics, so getting this page going w
 it uses basic math and a bit of code to make it very easy to design your own mandalas. The radial tools make it a breeze to set up the symmetries in your artwork, and everything is saved locally within your browser.
 
 # how to get it on your machine
-just grab the html file. all code is included, you dont need a server to run this. You do need a latest version of chrome, the javascript uses features only found in Chrome. I will make it work in Edge and other browsers, but for now...get Chrome ;)
+just grab the html file. all code is included, you dont need a server to run this. You do need a latest version of chrome, the javascript uses features only found in Chrome. I will make it work in Edge and other browsers, but for now...get Chrome ;) 
 
 # where are the projects stored?
 Since its a SPA (single page app) there is no server backend. Everything happens locally on your machine. When you use the Save button, the mandala is stored as a text string in localStorage. This means you have roughly 5 megabytes of storage. The mandalas themselves are stored in a pretty compact format (json, but heavily stripped down). a moderately detailed mandala would take maybe 25k to 100k of storage. The alternative is to use the PNG button, which will give you an image file of the mandala you created. With this method you can create many mandalas...but you wont be able to store them for editing later. I'm looking into IndexDB which would allow much more storage.
