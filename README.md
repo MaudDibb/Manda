@@ -15,7 +15,7 @@ I'm also pretty handy with javascript and graphics, so getting this page going w
 it uses basic math and a bit of code to make it very easy to design your own mandalas. The radial tools make it a breeze to set up the symmetries in your artwork, and everything is saved locally within your browser.
 
 # how to get it on your machine
-just grab the html file. all code is included, you dont need a server to run this. You do need a latest version of chrome, the javascript uses features only found in Chrome. I will make it work in Edge and other browsers, but for now...get Chrome ;) 
+just grab the html file. All the code is in one file, index.html. You don't need a server to run this. Tested to work fine in latest Chrome, Edge and Opera desktop browsers. 
 
 # where are the projects stored?
 Since its a SPA (single page app) there is no server backend. Everything happens locally on your machine. When you use the Save button, the mandala is stored as a text string in localStorage. This means you have roughly 5 megabytes of storage. The mandalas themselves are stored in a pretty compact format (json, but heavily stripped down). a moderately detailed mandala would take maybe 25k to 100k of storage. The alternative is to use the PNG button, which will give you an image file of the mandala you created. With this method you can create many mandalas...but you wont be able to store them for editing later. I'm looking into IndexDB which would allow much more storage.
@@ -55,8 +55,8 @@ Yes. but donations would be highly appreciated if you have a big heart. Whatever
 # can i use x in my own project?
 sure. just kindly mention me somewhere. If you charge for it... All i can say is remember me, I like money too ;)
 
-# doesnt work in edge/ie/some other browser
-I know. There's quite a few things in the code base that edge does not like (named capture groups in a regular expression for one...bad microsoft!). I work exclusively with chrome. I'm on windows, therefore no access to safari. For now, just use chrome.
+# doesnt work in ie/some other browser
+Edge, Opera and Chrome desktop are the only browsers I have to test with. If you can, open up an issue about it
 
 # phone/tablet?
 I would love to see this work on a mobile device. I have little experience working with touchscreens and because of all the keyboard shortcuts, I would have to redesign the entire UI for it. It weighs heavily on my thoughts tho, I will adress mobile use in the near future!
@@ -68,8 +68,6 @@ I know it could have been done differently. I did not design this for a code rev
 make some awesome art!
 
 # TODO
-- make this work in Edge
-- make this work in Opera (it is webkit..should work fine as is)
 - need help with safari..i dont own anything apple based.
 - delete saved mandalas
 - indexDB for more storage space. Was looking at cache api too, maybe store the sessions as json files? can that be done? can i iterate over cached files?
