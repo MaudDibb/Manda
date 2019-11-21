@@ -18,7 +18,7 @@
 		#thumb1,#thumb2,#thumb3 {position:absolute;top:0px;left:0px;width:200px;height:200px;border:1px solid #222;background:#000}
 		#thumb2 {left:220px;}
 		#thumb3 {left:440px;}
-		#gallery {position:absolute;margin:auto;width:700px;height:242px;top:0px;left:0px;right:0px;bottom:0px;border:1px solid #777;background:#111}
+		#gallery {font:12px monospace;position:absolute;margin:auto;width:700px;height:242px;top:0px;left:0px;right:0px;bottom:0px;border:1px solid #777;background:#111}
 		#prev,#next {cursor:pointer;padding-top:12px;position:absolute;top:80px;height:30px;width:17px;color:#aaa;background:#000;border:1px solid #777;border-radius:5px}
 		#prev {left:-21px;}
 		#next {right:-21px;}
@@ -217,7 +217,6 @@ window.colorPicker = {
 
 /* start of manda */
 let canvas = ctx = mandacanvas = mandactx = galleryCanvas = null;
-let shiftDown = ctrlDown = false;
 let manda = {
 	w:0,h:0,mx:0,my:0,tx:0,ty:0,ax:0,ay:0,oldtx:0,oldty:0,
 	center:{x:0,y:0},
@@ -231,6 +230,25 @@ Object.assign(CanvasRenderingContext2D.prototype,{
 	clear:function(){this.clearRect(0,0,this.canvas.width,this.canvas.height)},
 	zero:function(){this.fillStyle='#000';this.fillRect(0,0,this.canvas.width,this.canvas.height)}
 });
+
+//toBlob polyfill for Edge
+if (!HTMLCanvasElement.prototype.toBlob) {
+	Object.defineProperty(HTMLCanvasElement.prototype, 'toBlob', {
+		value: function (callback, type, quality) {
+			var canvas = this;
+			setTimeout(function() {
+				var binStr = atob( canvas.toDataURL(type, quality).split(',')[1] ),
+					len = binStr.length,
+					arr = new Uint8Array(len);
+				for (var i = 0; i < len; i++ ) {
+					arr[i] = binStr.charCodeAt(i);
+				}
+
+				callback( new Blob( [arr], {type: type || 'image/png'} ) );
+			});
+		}
+	});
+}
 
 const deg2radian = deg => (Math.PI/180)*deg;
 const pointOnCircle = (deg,rad,center={x:0,y:0}) => [center.x+Math.sin(deg2radian(deg))*rad, center.y-Math.cos(deg2radian(deg))*rad];
@@ -261,7 +279,7 @@ const calcMandaSize = (shapes) => {
 const setCenter = () => {
 	let [mx,my,dot] = [manda.mx,manda.my,null];
 	manda.shapes.forEach(s=>s.a.forEach(c=>(distFromPoint(mx,my,c)<s.s)&&(dot=c)));
-	if (dot) manda.center = {...dot};
+	if (dot) manda.center = {x:dot.x,y:dot.y};
 	renderManda();
 }
 
@@ -274,46 +292,37 @@ const resize = (e) => {
 	canvas.style.height = h + 'px';
 	ctx.width = w;
 	ctx.height = h;
-	manda = {...manda,tx:canvas.width/2,ty:canvas.height/2,w,h};
+	manda.tx = canvas.width/2;
+	manda.ty = canvas.height/2;
+	manda.w = w;
+	manda.h = h;
 	renderManda();
 }
 
 const keyDownFn = select({
 	'Escape':       () => closeGallery(),
-	'ShiftLeft': 	() => shiftDown = true,
-	'ShiftRight': 	() => shiftDown = true,
-	'ControlLeft':  () => ctrlDown = true,
-	'ControlRight': () => ctrlDown = true, 
-	'ArrowUp': 		() => colorPicker.moveUp(shiftDown?5:1),
-	'ArrowDown': 	() => colorPicker.moveDown(shiftDown?5:1),
-	'ArrowLeft': 	() => colorPicker.moveLeft(shiftDown?5:1),
-	'ArrowRight': 	() => colorPicker.moveRight(shiftDown?5:1),
-	'BracketLeft': 	() => colorPicker.moveCCW(shiftDown?5:1),
-	'BracketRight': () => colorPicker.moveCW(shiftDown?5:1),
-	'Digit1': 		() => radialOffset1Over4(),
-	'Digit2': 		() => radialOffset1Over2(),
-	'Digit3': 		() => radialOffset3Over4(),
-	'Digit0': 		() => radialOffset0(), 
+	'ArrowUp': 		(shiftDown) => colorPicker.moveUp(shiftDown?5:1),
+	'ArrowDown': 	(shiftDown) => colorPicker.moveDown(shiftDown?5:1),
+	'ArrowLeft': 	(shiftDown) => colorPicker.moveLeft(shiftDown?5:1),
+	'ArrowRight': 	(shiftDown) => colorPicker.moveRight(shiftDown?5:1),
+	'[': 			() => colorPicker.moveCCW(1),
+	']': 			() => colorPicker.moveCW(1),
+	'{': 			() => colorPicker.moveCCW(5),
+	'}': 			() => colorPicker.moveCW(5),
+	'1': 			() => radialOffset1Over4(),
+	'2': 			() => radialOffset1Over2(),
+	'3': 			() => radialOffset3Over4(),
+	'0': 			() => radialOffset0(), 
 	'Enter': 		() => setCenter(),
 },()=>false);
 
-const keyUpFn = select({
-	'ShiftLeft': 	() => shiftDown = false,
-	'ShiftRight': 	() => shiftDown = false,
-	'ControlLeft':  () => ctrlDown = false,
-	'ControlRight': () => ctrlDown = false, 
-},()=>false);
-
 const keydown = (e) => {
-	//console.log(e.code);
-	keyDownFn(e.code);
+	keyDownFn(e.key,e.shiftKey);
 	renderManda();
 }
 
-const keyup = (e) => keyUpFn(e.code);
-
 const mousewheel = e => {
-	if (shiftDown) {
+	if (e.shiftKey) {
 		manda.toolRad += -e.deltaY*0.01;
 		if (manda.toolRad < 0) manda.toolRad = 0.05;
 		setCursorSize(manda.toolRad);
@@ -328,23 +337,26 @@ const mousewheel = e => {
 }
 
 const mousedown = e => {
-	manda.panning = ctrlDown;
-	if (shiftDown) {
+	if (e.shiftKey) {
 		let [mx,my,shape] = [...transformMouseCoords(e),null];
 		manda.shapes.forEach(s=>s.a.forEach(c=>(distFromPoint(mx,my,c)<s.s)&&(shape=s)));
 		if (shape) colorPicker.setColor(shape.c);
 		renderManda();
 		return;
 	}
-	if (manda.panning) {
-		manda = {...manda,ax:e.offsetX,ay:e.offsetY,oldtx:manda.tx,oldty:manda.ty};
+	if (e.ctrlKey) {
+		manda.panning = true;
+		manda.ax = e.offsetX;
+		manda.ay = e.offsetY;
+		manda.oldtx = manda.tx;
+		manda.oldty = manda.ty;
 	} else {
 		(manda.cursor.length > 0) && manda.shapes.push({s:manda.toolRad,c:colorPicker.getHSL(),a:manda.cursor.map(s=>({x:s.x,y:s.y}))});
 		let [oldctx,w,h] = [ctx,...calcMandaSize(manda.shapes)];
 		mandacanvas.width = w;
 		mandacanvas.height = h;
 		ctx = mandactx;
-		render({...manda,scale:1,w,h,tx:w/2,ty:h/2},false);
+		render({shapes:manda.shapes,scale:1,w,h,tx:w/2,ty:h/2},false);
 		ctx = oldctx;
 	}
 }
@@ -456,6 +468,18 @@ const radialOffset1Over2 = (r) => (r=(360/manda.radialCount)/2,$('#radialOffset'
 const radialOffset1Over4 = (r) => (r=(360/manda.radialCount)/4,$('#radialOffset').value=r,manda.radialOffset=r,renderManda());
 const radialOffset3Over4 = (r) => (r=((360/manda.radialCount)/4)*3,$('#radialOffset').value=r,manda.radialOffset=r,renderManda());
 const radialOffset0 = () => ($('#radialOffset').value=0,manda.radialOffset=0,renderManda());
+const radialCountWheel = (e) => {
+	manda.radialCount+=e.deltaY>0?1:-1;
+	(manda.radialCount<2) && (manda.radialCount=2);
+	$('#radialCount').value=manda.radialCount;
+	renderManda();
+}
+const radialOffsetWheel = (e) => {
+	manda.radialOffset+=e.deltaY>0?0.25:-0.25;
+	(manda.radialOffset < 0) && (manda.radialOffset=0);
+	$('#radialOffset').value=manda.radialOffset;
+	renderManda();
+}
 
 const downloadImage = () => {
 	let filename = prompt('Enter a filename for this image');
@@ -466,7 +490,7 @@ const downloadImage = () => {
 		canvas.width = width;
 		canvas.height = height;
 		ctx = canvas.getContext('2d');
-		render({...manda,scale:1,w:width,h:height,tx:width/2,ty:width/2},false);
+		render({shapes:manda.shapes,scale:1,w:width,h:height,tx:width/2,ty:width/2},false);
 		canvas.toBlob(blob=>{
 			let a = document.createElement('a');
 			a.href = URL.createObjectURL(blob);
@@ -505,10 +529,8 @@ const load = (name) =>
 
 const loadFn = (name) => () => {
 	$('#gallery').style.display='none';
-	manda = {...manda, shapes:load(name),tx:manda.w/2,ty:manda.h/2,center:{x:0,y:0},scale:1,invScale:1,cursor:[]};
-	shiftDown = false;
-	ctrlDown = false;
-	mousedown();
+	Object.assign(manda, {shapes:load(name),tx:manda.w/2,ty:manda.h/2,center:{x:0,y:0},scale:1,invScale:1,cursor:[]});
+	mousedown({ctrlKey:false,shiftKey:false});
 	renderManda();
 }
 
@@ -527,7 +549,7 @@ const showThumbs = () => {
 
 const galleryPrev = () => ((manda.galleryStart>0) && (manda.galleryStart-=3),showThumbs());  
 const galleryNext = () => ((manda.galleryStart+3 < manda.saves.length) && (manda.galleryStart+=3),showThumbs());  
-const gallery = () => {
+const loadGallery = () => {
 	let n=0;
 	let len = window.localStorage.length;
 	manda.saves = [];	
@@ -535,7 +557,6 @@ const gallery = () => {
 	while (n<len) {
 		let name = window.localStorage.key(n);
 		if (name.startsWith('manda_')) {
-			//console.log(window.localStorage.getItem(name).length);
 			manda.saves.push(name);
 		}
 		n++;
@@ -565,10 +586,8 @@ const gallery = () => {
 }
 
 const newManda = () => {
-	manda = {...manda,shapes:[],cursor:[],tx:manda.w/2,ty:manda.h/2,center:{x:0,y:0},scale:1,invScale:1,cursor:[]};
-	shiftDown = false;
-	ctrlDown = false;
-	mousedown();
+	Object.assign(manda, {shapes:[],cursor:[],tx:manda.w/2,ty:manda.h/2,center:{x:0,y:0},scale:1,invScale:1,cursor:[]});
+	mousedown({ctrlKey:false,shiftKey:false});
 	renderManda();
 }
 
@@ -583,12 +602,15 @@ window.addEventListener('DOMContentLoaded', (e) => {
 	canvas.addEventListener('mouseup', mouseup);
 	canvas.addEventListener('wheel', mousewheel);
 	document.onkeydown = keydown;
-	document.onkeyup = keyup;
 	mandacanvas = document.createElement('canvas');
 	mandactx = mandacanvas.getContext('2d');
 	galleryCanvas = document.createElement('canvas');
 	$('#prev').addEventListener('mousedown',galleryPrev);
 	$('#next').addEventListener('mousedown',galleryNext);
+	$('#radialCount').addEventListener('wheel',radialCountWheel);
+	$('#radialOffset').addEventListener('wheel',radialOffsetWheel);
+
+
 });
 
 	</script>
@@ -606,7 +628,7 @@ window.addEventListener('DOMContentLoaded', (e) => {
 	</div>
 	<div>
 		<div>Number of Radials</div>
-		<div><input type='number' id='radialCount' min=2 style='width:30px' value='8' onmouseout='radialCount(this)' title='Use your mousewheel to adjust value. When mouse leaves the display will reflect the new changes'></div>
+		<div><input type='number' id='radialCount' min=2 style='width:30px' value='8' title='Use your mousewheel to adjust value. When mouse leaves the display will reflect the new changes'></div>
 		<div style='clear:both'></div>
 	</div>
 	<div>
@@ -616,8 +638,7 @@ window.addEventListener('DOMContentLoaded', (e) => {
 			<span onclick='radialOffset1Over4()' title='set radial offset to 1/4 angle between radials'>1</span>
 			<span onclick='radialOffset1Over2()' title='set radial offset to 1/2 angle between radials'>2</span>
 			<span onclick='radialOffset3Over4()' title='set radial offset to 3/4 angle between radials'>3</span>
-
-			<input type='number' id='radialOffset' style='width:30px' min=0 value='0' step='0.25' onmouseout='radialOffset(this)' title='Use your mousewheel to adjust value. When mouse leaves the display will reflect the new changes'>
+			<input type='number' id='radialOffset' style='width:30px' min=0 value='0' step='0.25' title='Use your mousewheel to adjust value. When mouse leaves the display will reflect the new changes'>
 		</div>
 		<div style='clear:both'></div>
 	</div>
@@ -697,7 +718,7 @@ window.addEventListener('DOMContentLoaded', (e) => {
 	<div>
 		<div style='float:none;text-align:center'>
 			<input type='button' value='New' 	 onclick='newManda()'>
-			<input type='button' value='Gallery' onclick='gallery()'>
+			<input type='button' value='Gallery' onclick='loadGallery()'>
 			<input type='button' value='PNG' 	 onclick='downloadImage()'>
 			<input type='button' value='Save' 	 onclick='save()'>
 		</div>
@@ -707,8 +728,9 @@ window.addEventListener('DOMContentLoaded', (e) => {
 <div id='gallery' style='display:none'>
 	<div style='position:relative;margin:20px 25px 20px 25px'>
 		<div id='prev'>&nbsp;&lt;</div>
-		<div>
+		<div style='position:relative;width:200px;height:200px'>
 			<canvas id='thumb1' width=200 height=200></canvas>
+			<div style='cursor:pointer;position:absolute;bottom:-5px;left:5px;padding:0px 5px 0px 5px;background:#000;color:#888;border:1px solid #888;border-radius:5px'>Delete</div>
 		</div>
 		<div>
 			<canvas id='thumb2' width=200 height=200></canvas>
