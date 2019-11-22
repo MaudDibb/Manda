@@ -15,14 +15,15 @@
 		#toolsettings > div > div:nth-child(2) > span {border:1px solid #888;background:#000;border-radius:5px;padding:0px 5px 0px 5px;font-size:12px}
 		input[type=number]::-webkit-inner-spin-button,
 		input[type=number]::-webkit-outer-spin-button { -webkit-appearance:none;margin:0; }
-		#thumb1,#thumb2,#thumb3 {position:absolute;top:0px;left:0px;width:200px;height:200px;border:1px solid #222;background:#000}
-		#thumb2 {left:220px;}
-		#thumb3 {left:440px;}
+		#thumb1,#thumb2,#thumb3 {width:200px;height:200px;border:1px solid #222;background:#000}
 		#gallery {font:12px monospace;position:absolute;margin:auto;width:700px;height:242px;top:0px;left:0px;right:0px;bottom:0px;border:1px solid #777;background:#111}
 		#prev,#next {cursor:pointer;padding-top:12px;position:absolute;top:80px;height:30px;width:17px;color:#aaa;background:#000;border:1px solid #777;border-radius:5px}
 		#prev {left:-21px;}
 		#next {right:-21px;}
 		#prev:hover,#next:hover {background:#888;color:#000;}
+		#deletet1,#deletet2,#deletet3 {cursor:pointer;position:absolute;bottom:-3px;left:10px;padding:0px 5px 0px 5px;background:#000;color:#888;border:1px solid #888;border-radius:5px}
+		#deletet2 {left:230px;}
+		#deletet3 {left:450px;}
 	</style>
 	<script>
 /* color picker */
@@ -215,8 +216,23 @@ window.colorPicker = {
 })();
 /* end color picker */
 
+let todo = `
+- add names to thumbnails in gallery
+- touch events
+- convert shape format
+	right now shapes are saved as [size,hsl color,array of x/y pairs for dots]
+	i want this: [size,hsl,radialCount,mirror flag(0/1),base angle,center,distFromCenter]
+	reason? editing! (and more compact save sizes)
+- with indexedDB...could save as binary to compress even more.
+- with binary saves...compression?
+- once shape format is converted...edit mode. use space to toggle paint/edit mode.
+- now that I have MaudDibb.github.io...see if i can make an online gallery for people to share
+	artwork
+- color palette? somewhere to store predefined colors...perhaps save them as well...
+`;
 /* start of manda */
 let canvas = ctx = mandacanvas = mandactx = galleryCanvas = null;
+let db = null;
 let manda = {
 	w:0,h:0,mx:0,my:0,tx:0,ty:0,ax:0,ay:0,oldtx:0,oldty:0,
 	center:{x:0,y:0},
@@ -503,33 +519,55 @@ const downloadImage = () => {
 	}
 }
 
+const setCurrentProject = (name) => {
+	let settings = db.transaction('settings','readwrite').objectStore('settings');
+	settings.put({name:'currentProject',value:name});
+}
+
 const save = () => {
-	let name = prompt('Save name for this project?');
+	let name = null;
+	if (manda.currentProject && (manda.currentProject != '')) {
+		name = manda.currentProject;
+	} else {
+		name = prompt('Save name for this project?');
+	}
+
 	if (name) {
-		let shapes = manda.shapes.map(s=>{
-			let reg = /^hsl\(([^,]+),([^%]+)%,([^%]+)%\)$/;
-			let [,hue,sat,lum] = (reg.exec(s.c)||[]).map(v=>+(+v).toFixed(2));
-			return [
-				`${+s.s.toFixed(2)}`,
-				`${hue},${sat},${lum}`,
-				`${s.a.reduce((r,d)=>(r.push(`${+d.x.toFixed(2)},${+d.y.toFixed(2)}`),r),[]).join('|')}`
-			].join('|');
-		});
-		window.localStorage.setItem(`manda_${name}`,JSON.stringify(shapes));
+		let data = packSave(manda.shapes);
+		let projects = db.transaction('projects','readwrite').objectStore('projects');
+		let req = projects.get(name);
+		req.onsuccess = e => {
+			if (e.target.result === undefined) {
+				projects.add({name,data});
+				setCurrentProject(name);
+			} else {
+				projects.put({name,data});
+			}
+		}
 	}
 }
 
-const load = (name) =>
-	JSON.parse(window.localStorage.getItem(name))
-	.map(s=>{
+const packSave = (data) => 
+	data.map(s=>{
+		let reg = /^hsl\(([^,]+),([^%]+)%,([^%]+)%\)$/;
+		let [,hue,sat,lum] = (reg.exec(s.c)||[]).map(v=>+(+v).toFixed(2));
+		return [
+			`${+s.s.toFixed(2)}`,
+			`${hue},${sat},${lum}`,
+			`${s.a.reduce((r,d)=>(r.push(`${+d.x.toFixed(2)},${+d.y.toFixed(2)}`),r),[]).join('|')}`
+		].join('|');
+	});
+
+const unpackSave = (data) =>
+	data.map(s=>{
 		let parts = s.split('|');
 		let [hue,sat,lum] = parts[1].split(',');
 		return {s:+parts[0],c:`hsl(${hue},${sat}%,${lum}%)`,a:(parts.slice(2)).map(d=>{let [x,y]=d.split(',');return {x:+x,y:+y}})};
 	});
 
-const loadFn = (name) => () => {
+const loadFn = (n) => () => {
 	$('#gallery').style.display='none';
-	Object.assign(manda, {shapes:load(name),tx:manda.w/2,ty:manda.h/2,center:{x:0,y:0},scale:1,invScale:1,cursor:[]});
+	Object.assign(manda, {currentProject:manda.saves[n].name,shapes:manda.saves[n].data,tx:manda.w/2,ty:manda.h/2,center:{x:0,y:0},scale:1,invScale:1,cursor:[]});
 	mousedown({ctrlKey:false,shiftKey:false});
 	renderManda();
 }
@@ -539,9 +577,11 @@ const showThumbs = () => {
 		let [cstart,c,ctx] = [n+manda.galleryStart,$(id),$(id).getContext('2d')];
 		ctx.fillStyle = '#000';
 		if (cstart < manda.saves.length) {
+			$(`#deletet${n+1}`).style.display = '';
 			ctx.drawImage(galleryCanvas,cstart*200,0,200,200,0,0,200,200);
-			c.onclick = loadFn(manda.saves[cstart]);
+			c.onclick = loadFn(cstart);
 		} else {
+			$(`#deletet${n+1}`).style.display = 'none';
 			ctx.fillRect(0,0,200,200);
 		}
 	});
@@ -549,44 +589,52 @@ const showThumbs = () => {
 
 const galleryPrev = () => ((manda.galleryStart>0) && (manda.galleryStart-=3),showThumbs());  
 const galleryNext = () => ((manda.galleryStart+3 < manda.saves.length) && (manda.galleryStart+=3),showThumbs());  
+const deleteManda = (n) => () => deleteProject(n);
+
+const deleteProject = (n) => {
+	let savenum = n + manda.galleryStart;
+	let name = manda.saves[savenum].name;
+	let projects = db.transaction('projects','readwrite').objectStore('projects');
+	projects.delete(name);
+	loadGallery();
+}
+
 const loadGallery = () => {
+	manda.saves = [];
 	let n=0;
-	let len = window.localStorage.length;
-	manda.saves = [];	
+	let store = db.transaction('projects').objectStore('projects');
+	store.openCursor().onsuccess = e => {
+		let cursor = e.target.result;
+		if (cursor) {
+			manda.saves.push({name:cursor.value.name,data:unpackSave(cursor.value.data)});
+			n++;
+			cursor.continue();
+		} else {
+			galleryCanvas.width = n*200;
+			galleryCanvas.height = 200;
+			galleryCanvas.style.width = `${n*200}px`;
+			galleryCanvas.style.height = '200px';
+			let oldctx = ctx;
+			ctx = galleryCanvas.getContext('2d');
+			ctx.zero();
 
-	while (n<len) {
-		let name = window.localStorage.key(n);
-		if (name.startsWith('manda_')) {
-			manda.saves.push(name);
+			manda.saves.forEach((save,n)=>{
+				let shapes = save.data;
+				let [w,h] = calcMandaSize(shapes);
+				let scale = (w>h) ? (200/w) : (200/h);
+				render({shapes,tx:(n*200)+100,ty:100,scale},false,false);
+			});
+
+			ctx = oldctx;
+			manda.galleryStart = 0;
+			showThumbs();
+			$('#gallery').style.display='';
 		}
-		n++;
-	}
-
-	n = manda.saves.length;
-	galleryCanvas.width = n*200;
-	galleryCanvas.height = 200;
-	galleryCanvas.style.width = `${n*200}px`;
-	galleryCanvas.style.height = '200px';
-	let oldctx = ctx;
-	ctx = galleryCanvas.getContext('2d');
-	ctx.zero();
-
-	manda.saves.forEach((name,n)=>{
-		let shapes = load(name);
-		let [w,h] = calcMandaSize(shapes);
-		let scale = (w>h) ? (200/w) : (200/h);
-		render({shapes,tx:(n*200)+100,ty:100,scale},false,false);
-	});
-
-	ctx = oldctx;
-	//ctx.drawImage(galleryCanvas,300,300);
-	manda.galleryStart = 0;
-	showThumbs();
-	$('#gallery').style.display='';
+	};
 }
 
 const newManda = () => {
-	Object.assign(manda, {shapes:[],cursor:[],tx:manda.w/2,ty:manda.h/2,center:{x:0,y:0},scale:1,invScale:1,cursor:[]});
+	Object.assign(manda, {currentProject:'',shapes:[],cursor:[],tx:manda.w/2,ty:manda.h/2,center:{x:0,y:0},scale:1,invScale:1,cursor:[]});
 	mousedown({ctrlKey:false,shiftKey:false});
 	renderManda();
 }
@@ -609,8 +657,58 @@ window.addEventListener('DOMContentLoaded', (e) => {
 	$('#next').addEventListener('mousedown',galleryNext);
 	$('#radialCount').addEventListener('wheel',radialCountWheel);
 	$('#radialOffset').addEventListener('wheel',radialOffsetWheel);
+	$('#deletet1').addEventListener('click',deleteManda(0));
+	$('#deletet2').addEventListener('click',deleteManda(1));
+	$('#deletet3').addEventListener('click',deleteManda(2));
 
-
+	let req = indexedDB.open('manda',1);
+	req.onerror = (e) => alert(`error opening db: ${e}`);
+	req.onupgradeneeded = e => {
+		let db = req.result;
+		let projects = db.createObjectStore("projects",{keyPath:"name"});
+		projects.transaction.oncomplete = e => {
+			let store = db.transaction('projects','readwrite').objectStore('projects');
+			let len = window.localStorage.length;
+			let n = 0;
+			while (n<len) {
+				let name = window.localStorage.key(n);
+				if (name.startsWith('manda_')) {
+					let data = JSON.parse(window.localStorage.getItem(name));
+					store.add({name:name.substring(6),data});
+				}
+				n++;
+			}
+		}
+		let settings = db.createObjectStore("settings",{keyPath:"name"});
+		settings.transaction.oncomplete = e => {
+			let store = db.transaction('settings','readwrite').objectStore('settings');
+			store.add({name:'currentProject',value:''});	
+		}		
+	}
+	req.onsuccess = e => {
+		db = e.target.result;
+		db.onerror = e => {
+			//alert('db error, see console');
+			//console.log('db error: ' + e.target.errorCode);
+		}
+		let settings = db.transaction('settings').objectStore('settings');
+		let sreq = settings.get('currentProject');
+		sreq.onsuccess = e => {
+			if (e.target.result !== undefined) {
+				let name = e.target.result.value;
+				manda.currentProject = name;
+				if (name != '') {
+					let projects = db.transaction('projects').objectStore('projects');
+					let lreq = projects.get(name);
+					lreq.onsuccess = e => {
+						let data = unpackSave(e.target.result.data);
+						manda.saves = [{name,data}];
+						loadFn(0)();
+					}
+				}
+			}
+		}
+	};
 });
 
 	</script>
@@ -728,15 +826,17 @@ window.addEventListener('DOMContentLoaded', (e) => {
 <div id='gallery' style='display:none'>
 	<div style='position:relative;margin:20px 25px 20px 25px'>
 		<div id='prev'>&nbsp;&lt;</div>
-		<div style='position:relative;width:200px;height:200px'>
+		<div style='display:inline;width:200px;height:200px'>
 			<canvas id='thumb1' width=200 height=200></canvas>
-			<div style='cursor:pointer;position:absolute;bottom:-5px;left:5px;padding:0px 5px 0px 5px;background:#000;color:#888;border:1px solid #888;border-radius:5px'>Delete</div>
+			<div id='deletet1'>Delete</div>
 		</div>
-		<div>
+		<div style='display:inline;width:200px;height:200px'>>
 			<canvas id='thumb2' width=200 height=200></canvas>
+			<div id='deletet2'>Delete</div>
 		</div>
-		<div>
+		<div style='display:inline;width:200px;height:200px'>>
 			<canvas id='thumb3' width=200 height=200></canvas>
+			<div id='deletet3'>Delete</div>
 		</div>
 		<div id='next'>&nbsp;&gt;</div>
 	</div>
