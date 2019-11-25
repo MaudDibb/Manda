@@ -116,7 +116,7 @@ const pickerMove = e => {
 
 const pickerUp = e => pickerMode = '';
 const getHSL = () => `hsl(${color.h},${color.s}%,${color.l}%)`;
-
+const getColor = () => ({h:color.h,s:color.s,l:color.l});
 const renderColorPicker = (color) => {
 	canvas.width = 200;
 	canvas.height = 240;
@@ -210,6 +210,7 @@ window.colorPicker = {
 	moveDown,
 	moveCW,
 	moveCCW,
+	getColor,
 	setColor,
 }
 
@@ -219,10 +220,6 @@ window.colorPicker = {
 let todo = `
 - add names to thumbnails in gallery
 - touch events
-- convert shape format
-	right now shapes are saved as [size,hsl color,array of x/y pairs for dots]
-	i want this: [size,hsl,radialCount,mirror flag(0/1),base angle,center,distFromCenter]
-	reason? editing! (and more compact save sizes)
 - with indexedDB...could save as binary to compress even more.
 - with binary saves...compression?
 - once shape format is converted...edit mode. use space to toggle paint/edit mode.
@@ -238,7 +235,7 @@ let manda = {
 	center:{x:0,y:0},
 	scale:1,invScale:1,toolRad:20,radialCount:8,radialOffset:0,
 	panning:false,radialSym:true,mirrorRadial:false,snapRadial:false,
-	cursor:[],shapes:[]
+	cursor:[],shapes:[],radials:[]
 };
 
 Object.assign(CanvasRenderingContext2D.prototype,{
@@ -267,7 +264,7 @@ if (!HTMLCanvasElement.prototype.toBlob) {
 }
 
 const deg2radian = deg => (Math.PI/180)*deg;
-const pointOnCircle = (deg,rad,center={x:0,y:0}) => [center.x+Math.sin(deg2radian(deg))*rad, center.y-Math.cos(deg2radian(deg))*rad];
+const pointOnCircle = (deg,rad,center={x:0,y:0}) => ({x:center.x+Math.sin(deg2radian(deg))*rad, y:center.y-Math.cos(deg2radian(deg))*rad});
 const angleFromPoint = (x,y,p={x:0,y:0},r) => (r=Math.atan2(x-p.x,-(y-p.y))*(180/Math.PI),(r<0)&&(r+=360),r);
 const distFromPoint = (x,y,p={x:0,y:0}) => Math.sqrt((p.x-x)*(p.x-x)+(p.y-y)*(p.y-y));
 const select = (cases,defaultCase) => (key, ...r) => key in cases ? cases[key](...r) : defaultCase(...r);
@@ -276,15 +273,23 @@ const setCursorSize = (cs) => manda.cursor.forEach(s=>s.size=cs);
 const closeGallery = () => $('#gallery').style.display = 'none';
 const renderManda = () => window.requestAnimationFrame(()=>render(manda));
 const transformMouseCoords = (e) => [(e.offsetX-manda.tx)*manda.invScale,(e.offsetY-manda.ty)*manda.invScale];
+const getRadials = (count,offset) => Array.from({length:count},(_,n)=>offset+(n*(360/count)));
+const closestRadial = (rads,a) => rads[rads.map(r=>Math.abs(r-a)).reduce((r,a,n)=>((a < r.a) && (r.a=a,r.n=n),r),{a:Infinity,n:-1}).n];
 
 const calcMandaSize = (shapes) => {
-	let [minX,minY,maxX,maxY] = [1000000,1000000,-1000000,-1000000];
-	shapes.forEach(s=>s.a.forEach(c=>{
-		minX = Math.min(minX,c.x-s.s);
-		minY = Math.min(minY,c.y-s.s);
-		maxX = Math.max(maxX,c.x+s.s);
-		maxY = Math.max(maxY,c.y+s.s);
-	}));
+	let [minX,minY,maxX,maxY] = [Infinity,Infinity,-Infinity,-Infinity];
+	shapes.length > 0 ?	
+		shapes.forEach(s=>{
+			let dots = getDots(s);
+			dots.forEach(d=>{
+				minX = Math.min(minX,d.x-s.size);
+				minY = Math.min(minY,d.y-s.size);
+				maxX = Math.max(maxX,d.x+s.size);
+				maxY = Math.max(maxY,d.y+s.size);
+			});
+		})
+	: 
+		minX = minY = maxX = maxY = 0;
 	minX -= 20;
 	minY -= 20;
 	maxX += 20;
@@ -294,9 +299,29 @@ const calcMandaSize = (shapes) => {
 
 const setCenter = () => {
 	let [mx,my,dot] = [manda.mx,manda.my,null];
-	manda.shapes.forEach(s=>s.a.forEach(c=>(distFromPoint(mx,my,c)<s.s)&&(dot=c)));
+	manda.shapes.forEach(s=>{
+		let dots = getDots(s);
+		dots.forEach(d=>(distFromPoint(mx,my,d)<s.size)&&(dot=d));
+	});
 	if (dot) manda.center = {x:dot.x,y:dot.y};
 	renderManda();
+}
+
+const getDots = (s) => {
+	let dots = [];
+	if (s.count == 1) {
+		dots.push(pointOnCircle(s.angle,s.dist,s.center));
+	} else {
+		let rads = getRadials(s.count,s.offset);
+		let diff = s.angle - closestRadial(rads,s.angle);
+		rads.forEach(r=>{
+			dots.push(pointOnCircle(r+diff,s.dist,s.center));
+			if (s.mirror) {
+				dots.push(pointOnCircle(r-diff,s.dist,s.center));
+			}
+		});
+	}
+	return dots;
 }
 
 const resize = (e) => {
@@ -325,10 +350,10 @@ const keyDownFn = select({
 	']': 			() => colorPicker.moveCW(1),
 	'{': 			() => colorPicker.moveCCW(5),
 	'}': 			() => colorPicker.moveCW(5),
-	'1': 			() => radialOffset1Over4(),
-	'2': 			() => radialOffset1Over2(),
-	'3': 			() => radialOffset3Over4(),
-	'0': 			() => radialOffset0(), 
+	'1': 			() => radialOffset(1/4),
+	'2': 			() => radialOffset(1/2),
+	'3': 			() => radialOffset(3/4),
+	'0': 			() => radialOffset(0), 
 	'Enter': 		() => setCenter(),
 },()=>false);
 
@@ -355,7 +380,9 @@ const mousewheel = e => {
 const mousedown = e => {
 	if (e.shiftKey) {
 		let [mx,my,shape] = [...transformMouseCoords(e),null];
-		manda.shapes.forEach(s=>s.a.forEach(c=>(distFromPoint(mx,my,c)<s.s)&&(shape=s)));
+		manda.shapes.forEach(s=>{
+			s.a.forEach(c=>(distFromPoint(mx,my,c)<s.s)&&(shape=s))
+		});
 		if (shape) colorPicker.setColor(shape.c);
 		renderManda();
 		return;
@@ -367,7 +394,18 @@ const mousedown = e => {
 		manda.oldtx = manda.tx;
 		manda.oldty = manda.ty;
 	} else {
-		(manda.cursor.length > 0) && manda.shapes.push({s:manda.toolRad,c:colorPicker.getHSL(),a:manda.cursor.map(s=>({x:s.x,y:s.y}))});
+		if (e.offsetX || e.offsetY) {
+			manda.shapes.push({
+				size:manda.toolRad,
+				color:colorPicker.getColor(),
+				count:manda.radialSym ? manda.radialCount : 1,
+				mirror:manda.mirrorRadial,
+				offset:manda.radialOffset,
+				center:manda.center,
+				dist:distFromPoint(manda.mx,manda.my,manda.center),
+				angle:angleFromPoint(manda.mx,manda.my,manda.center)
+			});
+		}
 		let [oldctx,w,h] = [ctx,...calcMandaSize(manda.shapes)];
 		mandacanvas.width = w;
 		mandacanvas.height = h;
@@ -383,16 +421,13 @@ const mouseup = e => {
 
 const mousemove = e => {
 	let [mx,my] = transformMouseCoords(e);
-	manda.mx = mx;
-	manda.my = my;
-
+	
 	if (manda.panning) {
 		let [nx,ny] = [e.offsetX,e.offsetY];
 		manda.tx = manda.oldtx + (nx - manda.ax);
 		manda.ty = manda.oldty + (ny - manda.ay);
 	} else {
-		manda.cursor = [];
-		if (distFromPoint(mx,my,manda.center) < 5) {
+		if (distFromPoint(mx,my,manda.center) < 10) {
 			mx = manda.center.x;
 			my = manda.center.y;
 		}
@@ -400,28 +435,26 @@ const mousemove = e => {
 		if (manda.snapRadial) {
 			let a = angleFromPoint(mx,my,manda.center);
 			let dist = distFromPoint(mx,my,manda.center);
-			for  (r=0; r<360; r+=(360/manda.radialCount)) {
-				if (Math.abs(manda.radialOffset+r-a)<3) {
-					[mx,my] = pointOnCircle(manda.radialOffset+r,dist,manda.center);
+			manda.radials.forEach(r=>{
+				if (Math.abs(r-a)<5) {
+					let pt = pointOnCircle(r,dist,manda.center);
+					mx = pt.x;
+					my = pt.y;
 				}
-			}
+			});
 		}
 
-		if (manda.radialSym) {
-			let a = angleFromPoint(mx,my,manda.center);
-			let dist = distFromPoint(mx,my,manda.center);
-			for (r=0; r<360; r+=(360/manda.radialCount)) {
-				let [dx,dy] = pointOnCircle(r+a,dist,manda.center);
-				manda.cursor.push({x:dx,y:dy,size:manda.toolRad});
-				if (manda.mirrorRadial) {
-					[dx,dy] = pointOnCircle(r-a,dist,manda.center);
-					manda.cursor.push({x:dx,y:dy,size:manda.toolRad});
-				}
-			}
-		} else {
-			manda.cursor.push({x:mx,y:my,size:manda.toolRad});
-		}
+		manda.cursor = getDots({
+			count:manda.radialSym ? manda.radialCount : 1,
+			offset:manda.radialOffset,
+			mirror:manda.mirrorRadial,
+			center:manda.center,
+			dist:distFromPoint(mx,my,manda.center),
+			angle:angleFromPoint(mx,my,manda.center)
+		});
 	}
+	manda.mx = mx;
+	manda.my = my;
 	renderManda();
 }
 
@@ -448,17 +481,18 @@ const render = (m,ui=true,doclear=true) => {
 		ctx.beginPath();
 		for (r=0; r<360; r+=(360/m.radialCount)) {
 			ctx.moveTo(m.center.x+0.5,m.center.y+0.5);
-			[x,y] = pointOnCircle(r+m.radialOffset,m.w/2,m.center);
-			ctx.lineTo(x+0.5,y+0.5);
+			let pt = pointOnCircle(r+m.radialOffset,m.w/2,m.center);
+			ctx.lineTo(pt.x+0.5,pt.y+0.5);
 		}
 		ctx.stroke();
 	}
 
 	!ui && m.shapes.forEach(s=>{
-		ctx.fillStyle = s.c;
-		s.a.forEach(d=>{
+		ctx.fillStyle = `hsl(${s.color.h},${s.color.s}%,${s.color.l}%)`;
+		let dots = getDots(s);
+		dots.forEach(d=>{
 			ctx.beginPath();
-			ctx.circle(d.x,d.y,s.s,true)
+			ctx.circle(d.x,d.y,s.size,true)
 			ctx.fill()
 		});
 	});
@@ -467,7 +501,7 @@ const render = (m,ui=true,doclear=true) => {
 		ctx.fillStyle = colorPicker.getHSL();
 		m.cursor.forEach(s=>{
 			ctx.beginPath();
-			ctx.circle(s.x,s.y,s.size);
+			ctx.circle(s.x,s.y,m.toolRad);
 			ctx.fill();
 		});
 	}
@@ -477,23 +511,29 @@ const render = (m,ui=true,doclear=true) => {
 
 const toggleSymmetry = e => (manda.radialSym=e.checked,renderManda());
 const radialCount = e => (manda.radialCount=e.value|0,renderManda());
-const radialOffset = e => (manda.radialOffset=e.value|0,renderManda());
 const toggleMirror = e => (manda.mirrorRadial=e.checked,renderManda());
 const toggleSnapRadial = e => (manda.snapRadial=e.checked,renderManda());
-const radialOffset1Over2 = (r) => (r=(360/manda.radialCount)/2,$('#radialOffset').value=r,manda.radialOffset=r,renderManda());
-const radialOffset1Over4 = (r) => (r=(360/manda.radialCount)/4,$('#radialOffset').value=r,manda.radialOffset=r,renderManda());
-const radialOffset3Over4 = (r) => (r=((360/manda.radialCount)/4)*3,$('#radialOffset').value=r,manda.radialOffset=r,renderManda());
-const radialOffset0 = () => ($('#radialOffset').value=0,manda.radialOffset=0,renderManda());
-const radialCountWheel = (e) => {
-	manda.radialCount+=e.deltaY>0?1:-1;
-	(manda.radialCount<2) && (manda.radialCount=2);
-	$('#radialCount').value=manda.radialCount;
+const radialOffset = (off,r) => {
+	r = (360/manda.radialCount) * off;
+	$('#radialOffset').value = r;
+	manda.radialOffset = r;
+	manda.radials = getRadials(manda.radialCount,manda.radialOffset);
 	renderManda();
 }
+
+const radialCountWheel = (e) => {
+	manda.radialCount += e.deltaY > 0 ? 1 : -1;
+	(manda.radialCount<2) && (manda.radialCount=2);
+	$('#radialCount').value = manda.radialCount;
+	manda.radials = getRadials(manda.radialCount,manda.radialOffset);
+	renderManda();
+}
+
 const radialOffsetWheel = (e) => {
-	manda.radialOffset+=e.deltaY>0?0.25:-0.25;
+	manda.radialOffset += e.deltaY > 0 ? 0.25 : -0.25;
 	(manda.radialOffset < 0) && (manda.radialOffset=0);
-	$('#radialOffset').value=manda.radialOffset;
+	$('#radialOffset').value = manda.radialOffset;
+	manda.radials = getRadials(manda.radialCount,manda.radialOffset);
 	renderManda();
 }
 
@@ -548,21 +588,24 @@ const save = () => {
 }
 
 const packSave = (data) => 
-	data.map(s=>{
-		let reg = /^hsl\(([^,]+),([^%]+)%,([^%]+)%\)$/;
-		let [,hue,sat,lum] = (reg.exec(s.c)||[]).map(v=>+(+v).toFixed(2));
-		return [
-			`${+s.s.toFixed(2)}`,
-			`${hue},${sat},${lum}`,
-			`${s.a.reduce((r,d)=>(r.push(`${+d.x.toFixed(2)},${+d.y.toFixed(2)}`),r),[]).join('|')}`
-		].join('|');
-	});
+	data.map(s=>[
+		+s.size.toFixed(2),
+		+s.color.h.toFixed(2),
+		+s.color.s.toFixed(2),
+		+s.color.l.toFixed(2),
+		s.count,
+		+s.offset.toFixed(2),
+		s.mirror?1:0,
+		+s.angle.toFixed(2),
+		+s.dist.toFixed(2),
+		+s.center.x.toFixed(2),
+		+s.center.y.toFixed(2)
+	].join('|'));
 
 const unpackSave = (data) =>
 	data.map(s=>{
-		let parts = s.split('|');
-		let [hue,sat,lum] = parts[1].split(',');
-		return {s:+parts[0],c:`hsl(${hue},${sat}%,${lum}%)`,a:(parts.slice(2)).map(d=>{let [x,y]=d.split(',');return {x:+x,y:+y}})};
+		let [size,hue,sat,lum,count,offset,mirror,angle,dist,cx,cy] = s.split('|');
+		return {size:+size,color:{h:+hue,s:+sat,l:+lum},count:count|0,offset:+offset,mirror:mirror==1,angle:+angle,dist:+dist,center:{x:+cx,y:+cy}};
 	});
 
 const loadFn = (n) => () => {
@@ -634,12 +677,13 @@ const loadGallery = () => {
 }
 
 const newManda = () => {
-	Object.assign(manda, {currentProject:'',shapes:[],cursor:[],tx:manda.w/2,ty:manda.h/2,center:{x:0,y:0},scale:1,invScale:1,cursor:[]});
+	Object.assign(manda, {currentProject:'',shapes:[],cursor:[],tx:manda.w/2,ty:manda.h/2,center:{x:0,y:0},scale:1,invScale:1});
 	mousedown({ctrlKey:false,shiftKey:false});
 	renderManda();
 }
 
 window.addEventListener('DOMContentLoaded', (e) => {
+	manda.radials = getRadials(manda.radialCount,0);
 	colorPicker.init($('#c'));
 	canvas = $('#main');
 	ctx = canvas.getContext('2d');
@@ -666,19 +710,6 @@ window.addEventListener('DOMContentLoaded', (e) => {
 	req.onupgradeneeded = e => {
 		let db = req.result;
 		let projects = db.createObjectStore("projects",{keyPath:"name"});
-		projects.transaction.oncomplete = e => {
-			let store = db.transaction('projects','readwrite').objectStore('projects');
-			let len = window.localStorage.length;
-			let n = 0;
-			while (n<len) {
-				let name = window.localStorage.key(n);
-				if (name.startsWith('manda_')) {
-					let data = JSON.parse(window.localStorage.getItem(name));
-					store.add({name:name.substring(6),data});
-				}
-				n++;
-			}
-		}
 		let settings = db.createObjectStore("settings",{keyPath:"name"});
 		settings.transaction.oncomplete = e => {
 			let store = db.transaction('settings','readwrite').objectStore('settings');
@@ -701,7 +732,9 @@ window.addEventListener('DOMContentLoaded', (e) => {
 					let projects = db.transaction('projects').objectStore('projects');
 					let lreq = projects.get(name);
 					lreq.onsuccess = e => {
+						console.log(e);
 						let data = unpackSave(e.target.result.data);
+						console.log(data);
 						manda.saves = [{name,data}];
 						loadFn(0)();
 					}
@@ -732,10 +765,10 @@ window.addEventListener('DOMContentLoaded', (e) => {
 	<div>
 		<div>Radial Offset</div>
 		<div>
-			<span onclick='radialOffset0()' title='set radial offset to 0'>0</span>
-			<span onclick='radialOffset1Over4()' title='set radial offset to 1/4 angle between radials'>1</span>
-			<span onclick='radialOffset1Over2()' title='set radial offset to 1/2 angle between radials'>2</span>
-			<span onclick='radialOffset3Over4()' title='set radial offset to 3/4 angle between radials'>3</span>
+			<span onclick='radialOffset(0)' title='set radial offset to 0'>0</span>
+			<span onclick='radialOffset(1/4)' title='set radial offset to 1/4 angle between radials'>1</span>
+			<span onclick='radialOffset(1/2)' title='set radial offset to 1/2 angle between radials'>2</span>
+			<span onclick='radialOffset(3/4)' title='set radial offset to 3/4 angle between radials'>3</span>
 			<input type='number' id='radialOffset' style='width:30px' min=0 value='0' step='0.25' title='Use your mousewheel to adjust value. When mouse leaves the display will reflect the new changes'>
 		</div>
 		<div style='clear:both'></div>
