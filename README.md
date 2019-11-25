@@ -5,7 +5,7 @@ SPA designed for one thing only: dot mandalas
 
 the url/domain name in the image above is *NOT* real. I repeat: manda.com is not mine. It is me using a fake host name on a loopback ip address on my local machine for testing. If you must know the details:
 
-- edit hosts file on your windows box and add <fake domain name here>.com 127.0.0.2
+- edit hosts file on your windows box and add \<fake domain name here\>.com 127.0.0.2
 - ipconfig /flush
 - get nodejs, then get http-server package
 - run http-server <root dir of files you want server to run from> -a 127.0.0.2 -p 80 -c-1
