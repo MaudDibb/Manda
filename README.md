@@ -8,7 +8,7 @@ the url/domain name in the image above is *NOT* real. I repeat: manda.com is not
 - edit hosts file on your windows box and add \<fake domain name here\>.com 127.0.0.2
 - ipconfig /flush
 - get nodejs, then get http-server package
-- run http-server <root dir of files you want server to run from> -a 127.0.0.2 -p 80 -c-1
+- run http-server \<root dir of files you want server to run from\> -a 127.0.0.2 -p 80 -c-1
 - load browser, go to your new domain name/index.html (http server will not auto map / to index.html)
 
 the 2 on the ip is not a typo. you can do this for as many local domains you want to run on your box. I do this a lot to get around the localhost or file:// domain restrictions you get with certain operations in browsers, and it lets you use localStorage/indexedDB without mixing it up with other things you develop on your machine.
