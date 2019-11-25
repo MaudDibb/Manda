@@ -32,7 +32,7 @@
 const center = {x:100,y:100};
 let pickerData = [];
 let pickerMode = '';
-let color = {h:0,s:100,l:50,x:99,y:0};
+let color = {h:0,s:98,l:51,x:99,y:0};
 let canvas = null;
 
 const deg2radian = deg => (Math.PI/180)*deg;
@@ -53,7 +53,6 @@ const init = (el) => {
 			lumT -= lumInc;
 		}
 	}
-
 	canvas = el;
 	canvas.addEventListener('mousedown', pickerDown);
 	canvas.addEventListener('mousemove', pickerMove);
@@ -188,14 +187,10 @@ const moveCW    = (v) => (color.h+=v,(color.h>359)&&(color.h-=360),update());
 const moveCCW   = (v) => (color.h-=v,(color.h<0)&&(color.h+=360),update());
 
 const setColor = c => {
-	let reg = /^hsl\(([^,]+),([^%]+)%,([^%]+)%\)$/;
-	let [,h,s,l] = (reg.exec(c)||[]).map(v=>+v);
-	color.h = h;
-	color.s = s;
-	color.l = l;
-	color.x = s|0;
+	color = {h:c.h,s:c.s,l:c.l,x:c.s|0};
+	(color.x > 99) && (color.x=99); 
 	for (y=0;y<100;y++) {
-		if (Math.abs(pickerData[color.x][y].l - l) < 0.0001) break;
+		if (Math.abs(pickerData[color.x][y].l.toFixed(2) - color.l) < 0.025) break;
 	}
 	color.y = y;
 	renderColorPicker(color);
@@ -379,11 +374,12 @@ const mousewheel = e => {
 
 const mousedown = e => {
 	if (e.shiftKey) {
-		let [mx,my,shape] = [...transformMouseCoords(e),null];
+		let [mx,my,shape] = [manda.mx,manda.my,null];
 		manda.shapes.forEach(s=>{
-			s.a.forEach(c=>(distFromPoint(mx,my,c)<s.s)&&(shape=s))
+			let dots = getDots(s);
+			dots.forEach(d=>(distFromPoint(mx,my,d)<s.size)&&(shape=s))
 		});
-		if (shape) colorPicker.setColor(shape.c);
+		if (shape) colorPicker.setColor(shape.color);
 		renderManda();
 		return;
 	}
@@ -732,9 +728,7 @@ window.addEventListener('DOMContentLoaded', (e) => {
 					let projects = db.transaction('projects').objectStore('projects');
 					let lreq = projects.get(name);
 					lreq.onsuccess = e => {
-						console.log(e);
 						let data = unpackSave(e.target.result.data);
-						console.log(data);
 						manda.saves = [{name,data}];
 						loadFn(0)();
 					}
