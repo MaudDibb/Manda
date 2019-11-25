@@ -67,9 +67,14 @@ make some awesome art!
 # TODO
 - touchscreen events would be nice, that might end up being a seperate project
 - editing of current session objects...right now its add only, no delete/undo/edit
-- for editing to work, the way the mandala data is stored will need to change drastically. It will force a conversion of existing data..it could also help reduce size of saves if i do it right...we shall see.
 - svg support? not hard to do.
 - perhaps an online gallery for people to show off their creations? I have the github.io page started, but not sure how i can store all that data. otherwise ill have to fork up something for a domain
 - names on thumbnails in gallery
 - color palette?
 - any other ideas? let me know.
+
+# SVG?
+I'm really curious how this would behave with an SVG renderer instead of canvas. I did canvas originally for performance, but you can definitely see aliasing artifacts when zoomed in. SVG should look good no matter what zoom level you are at. The only thing stopping me is how well it would perform when there are many objects on the screen. Ill do a test version later that does SVG and see how it goes
+
+# update 11/25/2019
+just commited a huge change in the handling of the shape format. The way things were done before, everytime you clicked the mouse it would store a new array of dots, storing each dots coordinates individually, along with size and color. Now, the format specifies just size,color,count,radial offset,angle,distance from center and center coordinates. This sounds more complicated, but actually it is less because imagine storing an array of 32 mirrored dots, which would be 64 pairs of x/y coordinates, versus the one object that describes the 64 dots. This will make the format much more compact, especially in the pack/unpack functions when storing the session into indexedDB. Had to factor code to handle the new shape format, which helped make the code a bit more readable. This will also lets me go back later and edit the shapes after they were put down. Next update will do just that ;) Also added a bunch of indexedDB support so loading/saving happens from indexDB, not localStorage
