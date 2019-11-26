@@ -72,11 +72,11 @@ make some awesome art!
 # SVG?
 I'm really curious how this would behave with an SVG renderer instead of canvas. I did canvas originally for performance, but you can definitely see aliasing artifacts when zoomed in. SVG should look good no matter what zoom level you are at. The only thing stopping me is how well it would perform when there are many objects on the screen. Ill do a test version later that does SVG and see how it goes
 
-# update 11/22/2019
-indexedDB support. The app was originally designed for localstorage to save your projects..but 5 megabytes can go pretty quickly with this app. indexedDB should have been my first choice, but it is far more complex to work with. Yet..here it is ;) and with that, I also added in code to preserve the project you were last working on so on next page load, you would be looking at the last project you were working on.
-
 # update 11/26/2019
 editing! shapes can be modified by using the space key while hovering over the shape you want to change. What this really does is remove the shape from the current set, and replace the cursor with the shape properties you selected, including radial settings, size, even the center used when the shape was placed. So this is like a delete/edit combined together. If you space on multiple shapes, it will keep removing them.
 
 # update 11/25/2019
 just commited a huge change in the handling of the shape format. The way things were done before, everytime you clicked the mouse it would store a new array of dots, storing each dots coordinates individually, along with size and color. Now, the format specifies just size,color,count,radial offset,angle,distance from center and center coordinates, for an entire set of dots. This sounds more complicated, but actually it is less because imagine storing an array of dots with 32 radials, mirrored, which would be 64 pairs of x/y coordinates, versus the one object that describes the 64 dots. This will make the format much more compact, especially in the pack/unpack functions when storing the session into indexedDB. Had to factor code to handle the new shape format, which helped make the code a bit more readable. This also lets me go back later and edit the shapes after they were put down. Next update will do just that ;) Also added a bunch of indexedDB support so loading/saving happens from indexDB, not localStorage
+
+# update 11/22/2019
+indexedDB support. The app was originally designed for localstorage to save your projects..but 5 megabytes can go pretty quickly with this app. indexedDB should have been my first choice, but it is far more complex to work with. Yet..here it is ;) and with that, I also added in code to preserve the project you were last working on so on next page load, you would be looking at the last project you were working on.
