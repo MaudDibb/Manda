@@ -212,16 +212,6 @@ window.colorPicker = {
 })();
 /* end color picker */
 
-let todo = `
-- add names to thumbnails in gallery
-- touch events
-- with indexedDB...could save as binary to compress even more.
-- with binary saves...compression?
-- once shape format is converted...edit mode. use space to toggle paint/edit mode.
-- now that I have MaudDibb.github.io...see if i can make an online gallery for people to share
-	artwork
-- color palette? somewhere to store predefined colors...perhaps save them as well...
-`;
 /* start of manda */
 let canvas = ctx = mandacanvas = mandactx = galleryCanvas = null;
 let db = null;
@@ -319,6 +309,35 @@ const getDots = (s) => {
 	return dots;
 }
 
+const editShape = () => {
+	let [mx,my,index] = [manda.mx,manda.my,-1];
+	manda.shapes.forEach((s,n)=>{
+		let dots = getDots(s);
+		dots.forEach(d=>(distFromPoint(mx,my,d)<s.size)&&(index=n));
+	});
+	if (index>=0) {
+		let shape = manda.shapes[index];
+		manda.shapes.splice(index,1);
+		manda.toolRad = shape.size;
+		colorPicker.setColor(shape.color);
+		manda.center = shape.center;
+		if (shape.count > 1) {
+			manda.radialSym = true;
+			manda.radialCount = shape.count;
+			manda.radialOffset = shape.offset;
+			$('#radialSym').checked = true;
+			$('#radialCount').value = shape.count;
+			$('#radialOffset').value = shape.offset;
+			manda.radials = getRadials(shape.count,shape.offset);
+		} else {
+			manda.radialSym = false;
+			$('#radialSym').checked = false;
+		}
+		mousedown({ctrlKey:false,shiftKey:false}); // trigger refresh of background canvas
+		mousemove({ctrlKey:false,shiftKey:false}); // and render cursor with new settings
+	}
+}
+
 const resize = (e) => {
 	let w = window.innerWidth-1;
 	let h = window.innerHeight-1;
@@ -350,6 +369,7 @@ const keyDownFn = select({
 	'3': 			() => radialOffset(3/4),
 	'0': 			() => radialOffset(0), 
 	'Enter': 		() => setCenter(),
+	' ': 			() => editShape(),
 },()=>false);
 
 const keydown = (e) => {
@@ -416,7 +436,14 @@ const mouseup = e => {
 }
 
 const mousemove = e => {
-	let [mx,my] = transformMouseCoords(e);
+	let mx = my = 0;
+
+	if (e.offsetX || e.offsetY) {
+		[mx,my] = transformMouseCoords(e);
+	} else {
+		mx = manda.mx;
+		my = manda.my;
+	}
 	
 	if (manda.panning) {
 		let [nx,ny] = [e.offsetX,e.offsetY];
@@ -601,7 +628,16 @@ const packSave = (data) =>
 const unpackSave = (data) =>
 	data.map(s=>{
 		let [size,hue,sat,lum,count,offset,mirror,angle,dist,cx,cy] = s.split('|');
-		return {size:+size,color:{h:+hue,s:+sat,l:+lum},count:count|0,offset:+offset,mirror:mirror==1,angle:+angle,dist:+dist,center:{x:+cx,y:+cy}};
+		return {
+			size:+size,
+			color:{h:+hue,s:+sat,l:+lum},
+			count:count|0,
+			offset:+offset,
+			mirror:mirror==1,
+			angle:+angle,
+			dist:+dist,
+			center:{x:+cx,y:+cy}
+		};
 	});
 
 const loadFn = (n) => () => {
@@ -806,6 +842,12 @@ window.addEventListener('DOMContentLoaded', (e) => {
 		</div>
 	</div>
 	<div>
+		<div></div>
+		<div style='float:none;text-align:center'>
+			<span>F11</span> to toggle fullscreen
+		</div>
+	</div>
+	<div>
 		<div>Dot Size</div>
 		<div>
 			<span>Shift</span> + mouse wheel
@@ -837,6 +879,13 @@ window.addEventListener('DOMContentLoaded', (e) => {
 		<div>Center radials on<br>dot under cursor</div>
 		<div>
 			<span>Enter</span>
+		</div>
+		<div style='clear:both'></div>
+	</div>
+	<div>
+		<div>Edit shape under cursor</div>
+		<div>
+			<span>Space</span>
 		</div>
 		<div style='clear:both'></div>
 	</div>
