@@ -3,17 +3,7 @@ SPA designed for one thing only: dot mandalas
 
 ![Manda image](https://i.imgur.com/7zn0OWT.png)
 
-the url/domain name in the image above is *NOT* real. I repeat: manda.com is not mine. It is me using a fake host name on a loopback ip address on my local machine for testing. If you must know the details:
-
-- edit hosts file on your windows box and add \<fake domain name here\>.com 127.0.0.2
-- ipconfig /flush
-- get nodejs, then get http-server package
-- run http-server \<root dir of files you want server to run from\> -a 127.0.0.2 -p 80 -c-1
-- load browser, go to your new domain name/index.html (http server will not auto map / to index.html)
-
-the 2 on the ip is not a typo. you can do this for as many local domains you want to run on your box. I do this a lot to get around the localhost or file:// domain restrictions you get with certain operations in browsers, and it lets you use localStorage/indexedDB without mixing it up with other things you develop on your machine.
-
-\<tl;dr\>stop asking about manda.com ;)
+the url/domain name in the image above is *NOT* real. I repeat: manda.com is not mine. It is me using a fake host name on a loopback ip address on my local machine for testing. 
 
 # So what is a dot mandala?
 google the phrase 'dot mandala' and look at the image/video results. Its a beautiful art form, and it can be done pretty easily with a little bit of paint and some simple tools. You will see many dot mandala paintings on rocks, canvas, etc. The really impressive ones are the indian wedding mandalas...so much detail. There are many tutorials showing you how they are done, with different styles, paints and tools used.
@@ -39,6 +29,7 @@ I tried to make this as functional as possible for anyone trying their hand at a
 - color picker. This is the color area on the top of the toolbox where you pick hue,saturation and luminance of a color. Clicking in the circle or box will set the color you want. There arow keys and \[,\] keys allow you to tweak the colors as you go. Shift + those keys will give you larger adjustments 
 - zoom and pan. Mousewheel to zoom, ctrl + left mouse button/drag will pan the image
 - adjust dot size. Shift + mousewheel will adjust the dot size
+- edit. hover over a shape and hit space...the shape will be removed from the current data set and the cursor will take on the properties of the shape you selected, including symmetry, radial count/offset, color, size, even the center used when it was put down.
 - color dropper. Shift + left mouse button will grab the color under the cursor
 - change center of radials. enter key over a dot will set the center of the radials to that dot
 - new. this will clear the current session
@@ -48,9 +39,6 @@ I tried to make this as functional as possible for anyone trying their hand at a
 
 # how is it so fast?
 Im using a clever trick where the current set is rendered into an offscreen canvas (not using offscreen api, just noticed that) and copying that into the onscreen canvas on refresh. The cursor and radial lines are the only things drawn in realtime.
-
-# cant edit/undo/delete existing shapes!
-Not yet...working on that part ;)
 
 # things are missing/doesnt work
 This is still a work in progress. bear with me. Consider it an alpha version. I released it so you all can play with it, and maybe you can help me with other browsers (i dont have safari for example)
@@ -75,7 +63,6 @@ make some awesome art!
 
 # TODO
 - touchscreen events would be nice, that might end up being a seperate project
-- editing of current session objects...right now its add only, no delete/undo/edit
 - svg support? not hard to do.
 - perhaps an online gallery for people to show off their creations? I have the github.io page started, but not sure how i can store all that data. otherwise ill have to fork up something for a domain
 - names on thumbnails in gallery
@@ -84,6 +71,9 @@ make some awesome art!
 
 # SVG?
 I'm really curious how this would behave with an SVG renderer instead of canvas. I did canvas originally for performance, but you can definitely see aliasing artifacts when zoomed in. SVG should look good no matter what zoom level you are at. The only thing stopping me is how well it would perform when there are many objects on the screen. Ill do a test version later that does SVG and see how it goes
+
+# update 11/26/2019
+editing! shapes can be modified by using the space key while hovering over the shape you want to change. What this really does is remove the shape from the current set, and replace the cursor with the shape properties you selected, including radial settings, size, even the center used when the shape was placed. So this is like a delete/edit combined together. If you space on multiple shapes, it will keep removing them.
 
 # update 11/25/2019
 just commited a huge change in the handling of the shape format. The way things were done before, everytime you clicked the mouse it would store a new array of dots, storing each dots coordinates individually, along with size and color. Now, the format specifies just size,color,count,radial offset,angle,distance from center and center coordinates, for an entire set of dots. This sounds more complicated, but actually it is less because imagine storing an array of dots with 32 radials, mirrored, which would be 64 pairs of x/y coordinates, versus the one object that describes the 64 dots. This will make the format much more compact, especially in the pack/unpack functions when storing the session into indexedDB. Had to factor code to handle the new shape format, which helped make the code a bit more readable. This also lets me go back later and edit the shapes after they were put down. Next update will do just that ;) Also added a bunch of indexedDB support so loading/saving happens from indexDB, not localStorage
