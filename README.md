@@ -36,6 +36,8 @@ I tried to make this as functional as possible for anyone trying their hand at a
 - gallery. this opens up a popup that will display small thumbnails of your previous creations that were saved in local storage. Clicking on any of these will load it in.
 - png. this will create a static image of your current mandala session, and start a download
 - save. this stores the current session into localstorage
+- toggle guide lines. hit the g key to toggle the radial lines on/off
+- hide the toolbox. hit t key to hide/restore the toolbox
 
 # how is it so fast?
 Im using a clever trick where the current set is rendered into an offscreen canvas (not using offscreen api, just noticed that) and copying that into the onscreen canvas on refresh. The cursor and radial lines are the only things drawn in realtime.
@@ -63,7 +65,6 @@ make some awesome art!
 
 # TODO
 - touchscreen events would be nice, that might end up being a seperate project
-- svg support? not hard to do.
 - perhaps an online gallery for people to show off their creations? I have the github.io page started, but not sure how i can store all that data. otherwise ill have to fork up something for a domain
 - names on thumbnails in gallery
 - color palette?
@@ -71,6 +72,13 @@ make some awesome art!
 
 # SVG?
 I'm really curious how this would behave with an SVG renderer instead of canvas. I did canvas originally for performance, but you can definitely see aliasing artifacts when zoomed in. SVG should look good no matter what zoom level you are at. The only thing stopping me is how well it would perform when there are many objects on the screen. Ill do a test version later that does SVG and see how it goes
+
+# update 11/29/2019
+added hotkeys to toggle the guide lines and the toolbox. now you can marvel at your creations in all their glory without anything on the screen to distract you ;) Also caught a little oops, the current project wasnt being updated in the db when switching projects from the gallery or hitting the new button.
+
+I tried doing a version of this with an SVG element instead of canvas...its a bit different as the context transformations for zooming and panning have to be redone for svg...gotta play with that for a minute. Also thinking about how to do touchscreen. a lot of things depend on hotkeys and mousewheel. I need a totally different interface to make touch events work
+
+And finally...a way to submit projects online for others to see. Firebase seems like a good way to handle that, but I need a server to handle the transactions and serve content to the app. Also requires some way for people to identify themselves, possibly with google/fb logins?
 
 # update 11/26/2019
 editing! shapes can be modified by using the space key while hovering over the shape you want to change. What this really does is remove the shape from the current set, and replace the cursor with the shape properties you selected, including radial settings, size, even the center used when the shape was placed. So this is like a delete/edit combined together. If you space on multiple shapes, it will keep removing them.
