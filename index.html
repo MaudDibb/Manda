@@ -219,7 +219,7 @@ let manda = {
 	w:0,h:0,mx:0,my:0,tx:0,ty:0,ax:0,ay:0,oldtx:0,oldty:0,
 	center:{x:0,y:0},
 	scale:1,invScale:1,toolRad:20,radialCount:8,radialOffset:0,
-	panning:false,radialSym:true,mirrorRadial:false,snapRadial:false,
+	panning:false,radialSym:true,mirrorRadial:false,snapRadial:false,guides:true,
 	cursor:[],shapes:[],radials:[]
 };
 
@@ -338,6 +338,9 @@ const editShape = () => {
 	}
 }
 
+const toggleGuides = () => (manda.guides=!manda.guides,renderManda());
+const toggleToolbox = (el=$('#toolsettings')) => el.style.display = el.style.display == 'none' ? '' : 'none';
+
 const resize = (e) => {
 	let w = window.innerWidth-1;
 	let h = window.innerHeight-1;
@@ -370,6 +373,8 @@ const keyDownFn = select({
 	'0': 			() => radialOffset(0), 
 	'Enter': 		() => setCenter(),
 	' ': 			() => editShape(),
+	'g': 			() => toggleGuides(),
+	't': 			() => toggleToolbox(),
 },()=>false);
 
 const keydown = (e) => {
@@ -494,20 +499,22 @@ const render = (m,ui=true,doclear=true) => {
 		let [mw,mh] = [mandacanvas.width/2,mandacanvas.height/2];
 		ctx.drawImage(mandacanvas,-mw,-mh);
 		
-		ctx.fillStyle = 'none';
-		ctx.strokeStyle = '#111';
-		ctx.lineWidth = 2;
-		ctx.beginPath();
-		ctx.circle(m.center.x,m.center.y,20);
-		ctx.stroke();
+		if (manda.guides) {
+			ctx.fillStyle = 'none';
+			ctx.strokeStyle = '#111';
+			ctx.lineWidth = 2;
+			ctx.beginPath();
+			ctx.circle(m.center.x,m.center.y,20);
+			ctx.stroke();
 
-		ctx.beginPath();
-		for (r=0; r<360; r+=(360/m.radialCount)) {
-			ctx.moveTo(m.center.x+0.5,m.center.y+0.5);
-			let pt = pointOnCircle(r+m.radialOffset,m.w/2,m.center);
-			ctx.lineTo(pt.x+0.5,pt.y+0.5);
+			ctx.beginPath();
+			for (r=0; r<360; r+=(360/m.radialCount)) {
+				ctx.moveTo(m.center.x+0.5,m.center.y+0.5);
+				let pt = pointOnCircle(r+m.radialOffset,m.w/2,m.center);
+				ctx.lineTo(pt.x+0.5,pt.y+0.5);
+			}
+			ctx.stroke();
 		}
-		ctx.stroke();
 	}
 
 	!ui && m.shapes.forEach(s=>{
@@ -645,6 +652,7 @@ const loadFn = (n) => () => {
 	Object.assign(manda, {currentProject:manda.saves[n].name,shapes:manda.saves[n].data,tx:manda.w/2,ty:manda.h/2,center:{x:0,y:0},scale:1,invScale:1,cursor:[]});
 	mousedown({ctrlKey:false,shiftKey:false});
 	renderManda();
+	setCurrentProject(manda.saves[n].name)
 }
 
 const showThumbs = () => {
@@ -712,6 +720,7 @@ const newManda = () => {
 	Object.assign(manda, {currentProject:'',shapes:[],cursor:[],tx:manda.w/2,ty:manda.h/2,center:{x:0,y:0},scale:1,invScale:1});
 	mousedown({ctrlKey:false,shiftKey:false});
 	renderManda();
+	setCurrentProject('');
 }
 
 window.addEventListener('DOMContentLoaded', (e) => {
@@ -764,9 +773,11 @@ window.addEventListener('DOMContentLoaded', (e) => {
 					let projects = db.transaction('projects').objectStore('projects');
 					let lreq = projects.get(name);
 					lreq.onsuccess = e => {
-						let data = unpackSave(e.target.result.data);
-						manda.saves = [{name,data}];
-						loadFn(0)();
+						if (e.target.result != undefined) {
+							let data = unpackSave(e.target.result.data);
+							manda.saves = [{name,data}];
+							loadFn(0)();
+						}
 					}
 				}
 			}
