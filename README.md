@@ -1,9 +1,9 @@
 # Manda
 SPA designed for one thing only: dot mandalas
 
-![Manda image](https://i.imgur.com/7zn0OWT.png)
+![Manda image](https://i.imgur.com/OZIP622.png)
 
-the url/domain name in the image above is *NOT* real. I repeat: manda.com is not mine. It is me using a fake host name on a loopback ip address on my local machine for testing. 
+the image above was done with this app. And I've never done dot mandalas before ;)
 
 # So what is a dot mandala?
 google the phrase 'dot mandala' and look at the image/video results. Its a beautiful art form, and it can be done pretty easily with a little bit of paint and some simple tools. You will see many dot mandala paintings on rocks, canvas, etc. The really impressive ones are the indian wedding mandalas...so much detail. There are many tutorials showing you how they are done, with different styles, paints and tools used.
