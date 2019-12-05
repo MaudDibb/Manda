@@ -73,6 +73,17 @@ make some awesome art!
 # SVG?
 I'm really curious how this would behave with an SVG renderer instead of canvas. I did canvas originally for performance, but you can definitely see aliasing artifacts when zoomed in. SVG should look good no matter what zoom level you are at. The only thing stopping me is how well it would perform when there are many objects on the screen. Ill do a test version later that does SVG and see how it goes
 
+# update 12/4/2019
+added a really, REALLY cool feature: repeat! While it doesn't exactly sound exciting...let the images speak for themselves:
+
+![Manda image](https://i.imgur.com/DaH4mFT.png)
+a normal click would add the one ring like above
+
+![Manda image](https://i.imgur.com/czcaz1Z.png)
+but Ctrl+Alt+click will repeat that action on the shape set the center is currently sitting on!
+
+and speaking of centering, the c key will zero the center, bringing it back to the center of the mandala space. Very handy when doing offset work like in the images above. If you haven't noticed, there is always a snap to 'center', meaning if the cursor hovers near the center of the guide lines, the shape will snap to it, making it easy to place that center dot, or stacking multiple dots over same spot.
+
 # update 11/29/2019
 added hotkeys to toggle the guide lines and the toolbox. now you can marvel at your creations in all their glory without anything on the screen to distract you ;) Also caught a little oops, the current project wasnt being updated in the db when switching projects from the gallery or hitting the new button.
 
