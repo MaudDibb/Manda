@@ -282,6 +282,15 @@ const calcMandaSize = (shapes) => {
 	return [maxX-minX,maxY-minY];
 }
 
+const getShapeAtCenter = () => {
+	let [cx,cy,shape] = [manda.center.x,manda.center.y,null];
+	manda.shapes.forEach(s=>{
+		let dots = getDots(s);
+		dots.forEach(d=>(distFromPoint(cx,cy,d)<s.size)&&(shape=s));
+	});
+	return shape;
+}
+
 const setCenter = () => {
 	let [mx,my,dot] = [manda.mx,manda.my,null];
 	manda.shapes.forEach(s=>{
@@ -340,6 +349,7 @@ const editShape = () => {
 
 const toggleGuides = () => (manda.guides=!manda.guides,renderManda());
 const toggleToolbox = (el=$('#toolsettings')) => el.style.display = el.style.display == 'none' ? '' : 'none';
+const zeroCenter = () => (manda.center={x:0,y:0},renderManda());
 
 const resize = (e) => {
 	let w = window.innerWidth-1;
@@ -375,6 +385,7 @@ const keyDownFn = select({
 	' ': 			() => editShape(),
 	'g': 			() => toggleGuides(),
 	't': 			() => toggleToolbox(),
+	'c': 			() => zeroCenter(),
 },()=>false);
 
 const keydown = (e) => {
@@ -408,12 +419,28 @@ const mousedown = e => {
 		renderManda();
 		return;
 	}
-	if (e.ctrlKey) {
+	if (e.ctrlKey && !e.altKey) {
 		manda.panning = true;
 		manda.ax = e.offsetX;
 		manda.ay = e.offsetY;
 		manda.oldtx = manda.tx;
 		manda.oldty = manda.ty;
+	} else if (e.ctrlKey && e.altKey) {
+		let dots = getDots(getShapeAtCenter());
+		dots.forEach(d=>{
+			manda.shapes.push({
+				size:manda.toolRad,
+				color:colorPicker.getColor(),
+				count:manda.radialSym ? manda.radialCount : 1,
+				mirror:manda.mirrorRadial,
+				offset:manda.radialOffset,
+				center:d,
+				dist:distFromPoint(manda.mx,manda.my,manda.center),
+				angle:angleFromPoint(manda.mx,manda.my,manda.center)
+			});
+		});
+		renderBG();
+		renderManda();
 	} else {
 		if (e.offsetX || e.offsetY) {
 			manda.shapes.push({
@@ -427,12 +454,8 @@ const mousedown = e => {
 				angle:angleFromPoint(manda.mx,manda.my,manda.center)
 			});
 		}
-		let [oldctx,w,h] = [ctx,...calcMandaSize(manda.shapes)];
-		mandacanvas.width = w;
-		mandacanvas.height = h;
-		ctx = mandactx;
-		render({shapes:manda.shapes,scale:1,w,h,tx:w/2,ty:h/2},false);
-		ctx = oldctx;
+		renderBG();
+		renderManda();
 	}
 }
 
@@ -484,6 +507,15 @@ const mousemove = e => {
 	manda.mx = mx;
 	manda.my = my;
 	renderManda();
+}
+
+const renderBG = () => {
+	let [oldctx,w,h] = [ctx,...calcMandaSize(manda.shapes)];
+	mandacanvas.width = w;
+	mandacanvas.height = h;
+	ctx = mandactx;
+	render({shapes:manda.shapes,scale:1,w,h,tx:w/2,ty:h/2},false);
+	ctx = oldctx;
 }
 
 const render = (m,ui=true,doclear=true) => {
@@ -874,6 +906,13 @@ window.addEventListener('DOMContentLoaded', (e) => {
 		<div style='clear:both'></div>
 	</div>
 	<div>
+		<div title='This is especially useful when working off-center, this will repeat what your are about to do on all the dots in the shape that belong to the one that is currently the center of the radial lines'>Repeat</div>
+		<div>
+			<span>Ctrl</span> + <span>Alt</span> + LMB
+		</div>
+		<div style='clear:both'></div>
+	</div>
+	<div>
 		<div>Color under cursor</div>
 		<div>
 			<span>Shift</span> + LMB
@@ -905,6 +944,13 @@ window.addEventListener('DOMContentLoaded', (e) => {
 		<div>Hide/view radial lines</div>
 		<div>
 			<span>G</span>
+		</div>
+		<div style='clear:both'></div>
+	</div>
+	<div>
+		<div>Reset center to 0,0</div>
+		<div>
+			<span>C</span>
 		</div>
 		<div style='clear:both'></div>
 	</div>
