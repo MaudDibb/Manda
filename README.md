@@ -26,6 +26,7 @@ I tried to make this as functional as possible for anyone trying their hand at a
 - radial offset. This lets you adjust where the radials start around the circle. By default its 0 but you can change this value to move the radial lines. several quick keys are defined that set this to 0, 1/4, 1/2 and 3/4 angle between radials. This control also works with mousewheel, in .25 degree increments
 - radial mirroring. When enabled, this will create a 'reflection' of the dots around the radial lines. This is VERY handy when doing flower petal designs.
 - snap to radials. When enabled, the cursor will snap to the radial lines, allowing precise positioning when putting down your shapes.
+- repeat. ctrl-alt-click will repeat the cursor shape around the set the current center is sitting on. look at the 12/4 update to see what it does.
 - color picker. This is the color area on the top of the toolbox where you pick hue,saturation and luminance of a color. Clicking in the circle or box will set the color you want. There arow keys and \[,\] keys allow you to tweak the colors as you go. Shift + those keys will give you larger adjustments 
 - zoom and pan. Mousewheel to zoom, ctrl + left mouse button/drag will pan the image
 - adjust dot size. Shift + mousewheel will adjust the dot size
@@ -38,6 +39,7 @@ I tried to make this as functional as possible for anyone trying their hand at a
 - save. this stores the current session into localstorage
 - toggle guide lines. hit the g key to toggle the radial lines on/off
 - hide the toolbox. hit t key to hide/restore the toolbox
+- zero center. hit c key to set center of radials to 0,0
 
 # how is it so fast?
 Im using a clever trick where the current set is rendered into an offscreen canvas (not using offscreen api, just noticed that) and copying that into the onscreen canvas on refresh. The cursor and radial lines are the only things drawn in realtime.
