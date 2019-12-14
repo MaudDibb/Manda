@@ -621,6 +621,41 @@ const downloadImage = () => {
 	}
 }
 
+const downloadSVG = () => {
+	let filename = prompt('Enter a filename for this image');
+	if (filename) {
+		let [width,height] = calcMandaSize(manda.shapes);
+		let svg = `
+<!DOCTYPE html>
+<style>
+html {margin:0,padding:0,width:100%,height:100%;background:#000}
+svg {width:100%;height:100%}
+</style>
+<html>
+<body>
+<svg xmlns="http://www.w3.org/2000/svg" viewbox="-${width/2} -${height/2} ${width} ${height}">`;
+		manda.shapes.forEach(s=>{
+			let dots = getDots(s);
+			svg += `
+	<g fill='hsl(${s.color.h},${s.color.s}%,${s.color.l}%)' stroke='none'>
+		`;
+			dots.forEach(d=>svg+=`<circle cx="${d.x}" cy="${d.y}" r="${s.size}"/>`);
+			svg += `
+	</g>`;
+		});
+		svg += `
+</svg>
+</body>
+</html>`;
+		let a = document.createElement('a');
+		a.href = URL.createObjectURL(new Blob(svg.split('')));
+		a.download = filename + '.html';
+		document.body.appendChild(a);
+		a.click();
+		document.body.removeChild(a);
+	}
+}
+
 const setCurrentProject = (name) => {
 	let settings = db.transaction('settings','readwrite').objectStore('settings');
 	settings.put({name:'currentProject',value:name});
@@ -966,7 +1001,8 @@ window.addEventListener('DOMContentLoaded', (e) => {
 			<input type='button' value='New' 	 onclick='newManda()'>
 			<input type='button' value='Gallery' onclick='loadGallery()'>
 			<input type='button' value='PNG' 	 onclick='downloadImage()'>
-			<input type='button' value='Save' 	 onclick='save()'>
+			<input type='button' value='Save' 	 onclick='save()'><br>
+			<input type="button" value="SVG"     onclick='downloadSVG()'>
 		</div>
 		<div style='clear:both'></div>
 	</div>
