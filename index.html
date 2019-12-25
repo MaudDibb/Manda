@@ -395,7 +395,7 @@ const keydown = (e) => {
 
 const mousewheel = e => {
 	if (e.shiftKey) {
-		manda.toolRad *= e.deltaY < 0 ? 50/49 : 49/50;
+		manda.toolRad *= e.deltaY < 0 ? (e.altKey?10/9:50/49) : (e.altKey?9/10:49/50);
 		if (manda.toolRad < 0) manda.toolRad = 0.05;
 		setCursorSize(manda.toolRad);
 	} else {
