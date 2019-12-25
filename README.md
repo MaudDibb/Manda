@@ -29,7 +29,7 @@ I tried to make this as functional as possible for anyone trying their hand at a
 - repeat. ctrl-alt-click will repeat the cursor shape around the set the current center is sitting on. look at the 12/4 update to see what it does.
 - color picker. This is the color area on the top of the toolbox where you pick hue,saturation and luminance of a color. Clicking in the circle or box will set the color you want. There arow keys and \[,\] keys allow you to tweak the colors as you go. Shift + those keys will give you larger adjustments 
 - zoom and pan. Mousewheel to zoom, ctrl + left mouse button/drag will pan the image
-- adjust dot size. Shift + mousewheel will adjust the dot size
+- adjust dot size. Shift + mousewheel will adjust the dot size, shift+alt+mousewheel for larger steps
 - edit. hover over a shape and hit space...the shape will be removed from the current data set and the cursor will take on the properties of the shape you selected, including symmetry, radial count/offset, color, size, even the center used when it was put down.
 - color dropper. Shift + left mouse button will grab the color under the cursor
 - change center of radials. enter key over a dot will set the center of the radials to that dot
@@ -78,6 +78,8 @@ UPDATE: svg exports look amazing. Only issue I have now is getting panning/zoom 
 
 # update 12/24/2019
 Almost forgot another browser: Firefox. I dont know why, but I didnt have it installed. Mousewheel delta is vastly different in firefox so changed the dot resizing to be constant no matter which browser you use. IE did not like onclick attributes on spans, so the 0/1/2/3 buttons were not working in IE...fixed. Everything else seems to work fine though! 4 browsers down...still no way to check safari or mobile. Was playing with DroidScript on my phone...gonna have a go at that and see if I can make a mobile app out of this. Merry Xmas, see you all next year!
+
+Also added a modifier key to help changing dot size. holding shift with scrollwheel gives you fine control, but shift+alt+mousewheel will give you larger steps
 
 # update 12/14/2019
 svg exporter. It is truly amazing how wonderful your work looks when properly rendered in SVG format. The renderer I use is canvas, with a prerendered image of the mandala as you add to it. The only thing thats actually drawn on the canvas is the cursor and radial lines, the rest is coming from a prerendered image. This is why the edges blur up a bit when you zoom in. The svg export makes a big difference when looking at your work zoomed in. I still need to add pan/zoom controls to the export so you can actually view it properly ;)
