@@ -395,7 +395,7 @@ const keydown = (e) => {
 
 const mousewheel = e => {
 	if (e.shiftKey) {
-		manda.toolRad += -e.deltaY*0.01;
+		manda.toolRad *= e.deltaY < 0 ? 50/49 : 49/50;
 		if (manda.toolRad < 0) manda.toolRad = 0.05;
 		setCursorSize(manda.toolRad);
 	} else {
@@ -628,12 +628,13 @@ const downloadSVG = () => {
 		let svg = `
 <!DOCTYPE html>
 <style>
-html {margin:0,padding:0,width:100%,height:100%;background:#000}
+html,body {margin:0;padding:0;width:100%;height:100%;background:#000}
 svg {width:100%;height:100%}
 </style>
 <html>
 <body>
-<svg xmlns="http://www.w3.org/2000/svg" viewbox="-${width/2} -${height/2} ${width} ${height}">`;
+<svg xmlns="http://www.w3.org/2000/svg" viewbox="-${width/2} -${height/2} ${width} ${height}">
+<g id='g'>`;
 		manda.shapes.forEach(s=>{
 			let dots = getDots(s);
 			svg += `
@@ -644,6 +645,7 @@ svg {width:100%;height:100%}
 	</g>`;
 		});
 		svg += `
+</g>
 </svg>
 </body>
 </html>`;
@@ -812,6 +814,10 @@ window.addEventListener('DOMContentLoaded', (e) => {
 	$('#deletet1').addEventListener('click',deleteManda(0));
 	$('#deletet2').addEventListener('click',deleteManda(1));
 	$('#deletet3').addEventListener('click',deleteManda(2));
+	$('#offset0').addEventListener('click',()=>radialOffset(0));
+	$('#offset1over4').addEventListener('click',()=>radialOffset(1/4));
+	$('#offset1over2').addEventListener('click',()=>radialOffset(1/2));
+	$('#offset3over4').addEventListener('click',()=>radialOffset(3/4));
 
 	let req = indexedDB.open('manda',1);
 	req.onerror = (e) => alert(`error opening db: ${e}`);
@@ -873,10 +879,10 @@ window.addEventListener('DOMContentLoaded', (e) => {
 	<div>
 		<div>Radial Offset</div>
 		<div>
-			<span onclick='radialOffset(0)' title='set radial offset to 0'>0</span>
-			<span onclick='radialOffset(1/4)' title='set radial offset to 1/4 angle between radials'>1</span>
-			<span onclick='radialOffset(1/2)' title='set radial offset to 1/2 angle between radials'>2</span>
-			<span onclick='radialOffset(3/4)' title='set radial offset to 3/4 angle between radials'>3</span>
+			<span id='offset0' title='set radial offset to 0'>0</span>
+			<span id='offset1over4' title='set radial offset to 1/4 angle between radials'>1</span>
+			<span id='offset1over2' title='set radial offset to 1/2 angle between radials'>2</span>
+			<span id='offset3over4' title='set radial offset to 3/4 angle between radials'>3</span>
 			<input type='number' id='radialOffset' style='width:30px' min=0 value='0' step='0.25' title='Use your mousewheel to adjust value. When mouse leaves the display will reflect the new changes'>
 		</div>
 		<div style='clear:both'></div>
