@@ -1,5 +1,5 @@
 # Manda
-SPA designed for one thing only: dot mandalas
+SPA (Single Page App) designed for one thing only: dot mandalas
 
 ![Manda image](https://i.imgur.com/OZIP622.png)
 
@@ -54,7 +54,7 @@ Yes. but donations would be highly appreciated if you have a big heart. Whatever
 sure. just kindly mention me somewhere. If you charge for it... All i can say is remember me, I like money too ;)
 
 # doesnt work in \<insert browser name\> on \<insert OS here\>
-Edge, Opera and Chrome for windows 10 desktop are the only browsers I have to test with (which is like, almost everybody. RIGHT?). I could use a hand with other Os/browsers out there ;) dont say IE. I hate IE. seriously.
+Edge, Opera, Firefox and Chrome for windows 10 desktop are the only browsers I have to test with (which is like, almost everybody. RIGHT?). I could use a hand with other Os/browsers out there ;) dont say IE. I hate IE. seriously.
 
 # phone/tablet?
 I would love to see this work on a mobile device. I have little experience working with touchscreens and because of all the keyboard shortcuts, I would have to redesign the entire UI for it. It weighs heavily on my thoughts tho, I will adress mobile use in the near future!
