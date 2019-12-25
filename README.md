@@ -75,6 +75,9 @@ make some awesome art!
 # SVG?
 I'm really curious how this would behave with an SVG renderer instead of canvas. I did canvas originally for performance, but you can definitely see aliasing artifacts when zoomed in. SVG should look good no matter what zoom level you are at. The only thing stopping me is how well it would perform when there are many objects on the screen. Ill do a test version later that does SVG and see how it goes
 
+# update 12/24/2019
+Almost forgot another browser: Firefox. I dont know why, but I didnt have it installed. Mousewheel delta is vastly different in firefox so changed the dot resizing to be constant no matter which browser you use. IE did not like onclick attributes on spans, so the 0/1/2/3 buttons were not working in IE...fixed. Everything else seems to work fine though! 4 browsers down...still no way to check safari or mobile. Was playing with DroidScript on my phone...gonna have a go at that and see if I can make a mobile app out of this. Merry Xmas, see you all next year!
+
 # update 12/14/2019
 svg exporter. It is truly amazing how wonderful your work looks when properly rendered in SVG format. The renderer I use is canvas, with a prerendered image of the mandala as you add to it. The only thing thats actually drawn on the canvas is the cursor and radial lines, the rest is coming from a prerendered image. This is why the edges blur up a bit when you zoom in. The svg export makes a big difference when looking at your work zoomed in. I still need to add pan/zoom controls to the export so you can actually view it properly ;)
 
