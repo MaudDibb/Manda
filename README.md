@@ -73,7 +73,8 @@ make some awesome art!
 - any other ideas? let me know.
 
 # SVG?
-I'm really curious how this would behave with an SVG renderer instead of canvas. I did canvas originally for performance, but you can definitely see aliasing artifacts when zoomed in. SVG should look good no matter what zoom level you are at. The only thing stopping me is how well it would perform when there are many objects on the screen. Ill do a test version later that does SVG and see how it goes
+I'm really curious how this would behave with an SVG renderer instead of canvas. I did canvas originally for performance, but you can definitely see aliasing artifacts when zoomed in. SVG should look good no matter what zoom level you are at. The only thing stopping me is how well it would perform when there are many objects on the screen. Ill do a test version later that does SVG and see how it goes.
+UPDATE: svg exports look amazing. Only issue I have now is getting panning/zoom to work in the svg output file. The data itself is perfect, just needs proper pan/zoom
 
 # update 12/24/2019
 Almost forgot another browser: Firefox. I dont know why, but I didnt have it installed. Mousewheel delta is vastly different in firefox so changed the dot resizing to be constant no matter which browser you use. IE did not like onclick attributes on spans, so the 0/1/2/3 buttons were not working in IE...fixed. Everything else seems to work fine though! 4 browsers down...still no way to check safari or mobile. Was playing with DroidScript on my phone...gonna have a go at that and see if I can make a mobile app out of this. Merry Xmas, see you all next year!
